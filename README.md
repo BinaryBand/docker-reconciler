@@ -21,3 +21,4 @@ A reference implementation of a reconciliation loop for Docker services, built f
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 
 See `../project-playbook/docker-reconciler-plan.md` for full design details.
+# docker-reconciler
