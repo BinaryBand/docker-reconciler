@@ -1,0 +1,5 @@
+env = "dev"
+log_level = "INFO"
+healthcheck_retries = 3
+healthcheck_interval_s = 10
+reconciler_max_retries = 10

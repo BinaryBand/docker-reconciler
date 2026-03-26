@@ -1,0 +1,19 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.0
+    hooks:
+      - id: ruff
+      - id: ruff-format
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.350
+    hooks:
+      - id: pyright
+  - repo: https://github.com/pre-commit/mirrors-lizard
+    rev: v1.17.10
+    hooks:
+      - id: lizard
+        args: ["-C", "5", "-L", "25", "-a", "4"]
+  - repo: https://github.com/import-linter/import-linter
+    rev: v2.1
+    hooks:
+      - id: import-linter

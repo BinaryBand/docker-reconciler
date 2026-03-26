@@ -1,0 +1,10 @@
+- name: Provision storage
+  hosts: all
+  tasks:
+    - name: Create volume directories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.uid }}"
+        mode: "{{ item.mode }}"
+      loop: "{{ manifests | map(attribute='volumes') | flatten }}"

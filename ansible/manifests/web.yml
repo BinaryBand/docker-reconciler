@@ -1,0 +1,8 @@
+- service: web
+  uid: 1001
+  user: svc_web
+  volumes:
+    - name: data
+      path: /srv/web/data
+      mode: "0750"
+  read_access: []

@@ -1,0 +1,3 @@
+project_name: docker-reconciler
+manifest_dir: ansible/manifests
+compose_file: docker-compose.yml

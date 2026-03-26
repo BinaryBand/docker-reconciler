@@ -1,0 +1,42 @@
+[project]
+name = "docker-reconciler"
+version = "0.1.0"
+description = "Stub reconciler"
+dependencies = [
+    "pydantic",
+    "tomli; python_version < '3.11'",
+]
+
+[project.scripts]
+reconciler = "src.main:main"
+test-dev-env = "scripts.test_dev_env:main"
+run-e2e-container-test = "runbook.run_e2e_container_test:main"
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pyright",
+    "lizard",
+    "import-linter",
+    "pre-commit",
+    "pytest",
+    "ansible",
+    "ansible-lint",
+    "pyyaml",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.13"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.importlinter]
+# Add configuration once structure is defined
