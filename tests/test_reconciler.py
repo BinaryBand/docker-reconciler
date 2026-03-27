@@ -51,8 +51,9 @@ def test_reconcile_halts_on_failure_state() -> None:
 def test_reconcile_exhausts_retries() -> None:
     obs = _observer_returning(StateLabel.T0)  # never advances
     with patch("src.reconciler.controller.Observer", return_value=obs):
-        with pytest.raises(RuntimeError, match="Max retries"):
-            reconcile(StateLabel.T5, _config(retries=3), [])
+        with patch("src.reconciler.controller.issue_command"):  # suppress 0.1s sleep
+            with pytest.raises(RuntimeError, match="Max retries"):
+                reconcile(StateLabel.T5, _config(retries=3), [])
 
 
 def test_reconcile_no_transition_path() -> None:

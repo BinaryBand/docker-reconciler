@@ -3,5 +3,5 @@ exclude_paths:
   - molecule/
   - ansible/molecule/
 skip_list:
-  - 'no-handler'
-  - 'role-name'
+  - "no-handler"
+  - "role-name"
