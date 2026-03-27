@@ -5,7 +5,11 @@ import pytest
 from src.models.manifest import ServiceManifest, VolumeSpec
 from src.models.service import ClusterState, ContainerState
 from src.models.state import StateLabel, SystemState
-from src.reconciler.controller import reconcile
+from src.reconciler.controller import (
+    FailureStateError,
+    IllegalTransitionError,
+    reconcile,
+)
 from src.reconciler.model import ReconcilerConfig
 from src.reconciler.observer import Observer
 from src.reconciler.transitions import build_transition_map
@@ -61,7 +65,7 @@ def test_reconcile_halts_on_failure_state() -> None:
     obs = _observer_returning(StateLabel.F1)
     with (
         patch("src.reconciler.controller.Observer", return_value=obs),
-        pytest.raises(RuntimeError, match="Reconciliation halted"),
+        pytest.raises(FailureStateError, match="failure state F1"),
     ):
         reconcile(StateLabel.T5, _config(), [])
 
@@ -77,7 +81,7 @@ def test_reconcile_exhausts_retries() -> None:
 
 
 def test_reconcile_no_transition_path() -> None:
-    """T5 observed, desired=T3: T5 can only go to T0, not toward T3 → RuntimeError."""
+    """T5 observed, desired=T3: T5 can only go to T0, not toward T3 → IllegalTransitionError."""
     cfg = ReconcilerConfig(
         desired_state=StateLabel.T3,
         transition_map=build_transition_map(),
@@ -87,7 +91,7 @@ def test_reconcile_no_transition_path() -> None:
     obs = _observer_returning(StateLabel.T5)
     with (
         patch("src.reconciler.controller.Observer", return_value=obs),
-        pytest.raises(RuntimeError, match="No path"),
+        pytest.raises(IllegalTransitionError, match="No legal path"),
     ):
         reconcile(StateLabel.T3, cfg, [])
 
@@ -120,6 +124,32 @@ def test_reconcile_dry_run_skips_commands() -> None:
     ):
         reconcile(StateLabel.T5, cfg, [])
     mock_cmd.assert_not_called()
+
+
+# --- Typed exception tests ---
+
+
+def test_failure_state_error_is_runtime_error() -> None:
+    assert issubclass(FailureStateError, RuntimeError)
+
+
+def test_illegal_transition_error_is_value_error() -> None:
+    assert issubclass(IllegalTransitionError, ValueError)
+
+
+@pytest.mark.parametrize(
+    "failure_state",
+    [StateLabel.F1, StateLabel.F2, StateLabel.F3, StateLabel.F4, StateLabel.F5],
+)
+def test_all_failure_states_raise_failure_state_error(
+    failure_state: StateLabel,
+) -> None:
+    obs = _observer_returning(failure_state)
+    with (
+        patch("src.reconciler.controller.Observer", return_value=obs),
+        pytest.raises(FailureStateError, match=failure_state),
+    ):
+        reconcile(StateLabel.T5, _config(), [])
 
 
 # --- Observer unit tests ---
