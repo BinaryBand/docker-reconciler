@@ -54,13 +54,25 @@ venv = ".venv"
 testpaths = ["tests"]
 
 [tool.importlinter]
-root_package = src
+root_package = "src"
 
 [[tool.importlinter.contracts]]
-name = "Business logic confined to reconciler and models"
+name = "Reconciler must not import utils"
 type = "forbidden"
-source_modules = ["src.utils", "src.main"]
-forbidden_modules = ["src.reconciler", "src.models"]
+source_modules = ["src.reconciler"]
+forbidden_modules = ["src.utils"]
+
+[[tool.importlinter.contracts]]
+name = "Utils must not import reconciler"
+type = "forbidden"
+source_modules = ["src.utils"]
+forbidden_modules = ["src.reconciler"]
+
+[[tool.importlinter.contracts]]
+name = "Models must not import anything internal"
+type = "forbidden"
+source_modules = ["src.models"]
+forbidden_modules = ["src.reconciler", "src.utils"]
 ```
 
 **`.ansible-lint`:**

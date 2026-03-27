@@ -1,13 +1,17 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
+from src.models.state import StateLabel, SystemState
 from src.reconciler.controller import reconcile
 from src.reconciler.model import ReconcilerConfig
-from src.models.state import StateLabel, SystemState
 from src.reconciler.transitions import build_transition_map
 
 
 def _config(retries: int = 10) -> ReconcilerConfig:
-    return ReconcilerConfig(desired_state=StateLabel.T5, max_retries=retries, dry_run=False)
+    return ReconcilerConfig(
+        desired_state=StateLabel.T5, max_retries=retries, dry_run=False
+    )
 
 
 def _observer_returning(label: StateLabel) -> MagicMock:
@@ -29,13 +33,19 @@ def test_transition_map_all_t_states() -> None:
         (StateLabel.T4, StateLabel.T5),
     ]
     for src, dst in expected:
-        assert tm[src] == dst
+        assert tm.transitions[src][0] == dst
 
 
-def test_transition_map_no_f_states() -> None:
+def test_transition_map_f_states_recover_to_t0() -> None:
     tm = build_transition_map()
-    for f in [StateLabel.F1, StateLabel.F2, StateLabel.F3, StateLabel.F4, StateLabel.F5]:
-        assert f not in tm
+    for f in [
+        StateLabel.F1,
+        StateLabel.F2,
+        StateLabel.F3,
+        StateLabel.F4,
+        StateLabel.F5,
+    ]:
+        assert tm.transitions[f] == [StateLabel.T0]
 
 
 # --- Reconciler error paths ---
@@ -43,28 +53,36 @@ def test_transition_map_no_f_states() -> None:
 
 def test_reconcile_halts_on_failure_state() -> None:
     obs = _observer_returning(StateLabel.F1)
-    with patch("src.reconciler.controller.Observer", return_value=obs):
-        with pytest.raises(RuntimeError, match="Reconciliation halted"):
-            reconcile(StateLabel.T5, _config(), [])
+    with (
+        patch("src.reconciler.controller.Observer", return_value=obs),
+        pytest.raises(RuntimeError, match="Reconciliation halted"),
+    ):
+        reconcile(StateLabel.T5, _config(), [])
 
 
 def test_reconcile_exhausts_retries() -> None:
     obs = _observer_returning(StateLabel.T0)  # never advances
-    with patch("src.reconciler.controller.Observer", return_value=obs):
-        with patch("src.reconciler.controller.issue_command"):  # suppress 0.1s sleep
-            with pytest.raises(RuntimeError, match="Max retries"):
-                reconcile(StateLabel.T5, _config(retries=3), [])
+    with (
+        patch("src.reconciler.controller.Observer", return_value=obs),
+        patch("src.reconciler.controller.issue_command"),
+        pytest.raises(RuntimeError, match="Max retries"),
+    ):
+        reconcile(StateLabel.T5, _config(retries=3), [])
 
 
 def test_reconcile_no_transition_path() -> None:
-    """T5 observed, desired=T0: T5 not in transition map → RuntimeError."""
-    cfg = ReconcilerConfig(desired_state=StateLabel.T0, max_retries=5, dry_run=False)
+    """T5 observed, desired=T3: T5 can only go to T0, not toward T3 → RuntimeError."""
+    cfg = ReconcilerConfig(desired_state=StateLabel.T3, max_retries=5, dry_run=False)
     obs = _observer_returning(StateLabel.T5)
-    with patch("src.reconciler.controller.Observer", return_value=obs):
-        with pytest.raises(RuntimeError, match="No path"):
-            reconcile(StateLabel.T0, cfg, [])
+    with (
+        patch("src.reconciler.controller.Observer", return_value=obs),
+        pytest.raises(RuntimeError, match="No path"),
+    ):
+        reconcile(StateLabel.T3, cfg, [])
 
 
 def test_reconcile_loop_terminates() -> None:
-    config = ReconcilerConfig(desired_state=StateLabel.T5, max_retries=10, dry_run=False)
+    config = ReconcilerConfig(
+        desired_state=StateLabel.T5, max_retries=10, dry_run=False
+    )
     reconcile(StateLabel.T5, config, [])  # real Observer simulates T0→T5

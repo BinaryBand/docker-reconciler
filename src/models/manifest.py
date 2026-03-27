@@ -1,5 +1,7 @@
-from pydantic import BaseModel, field_validator
 from typing import Any
+
+from pydantic import BaseModel, field_validator
+
 
 class VolumeSpec(BaseModel):
     name: str
@@ -25,6 +27,7 @@ class ServiceManifest(BaseModel):
     @classmethod
     def no_self_reference(cls, v: list[str], info: Any) -> list[str]:
         # Access the 'service' field from the validation context
-        if "service" in info.data and info.data["service"] in v:
-            raise ValueError("service cannot read its own access")
+        user = info.data.get("user")
+        if user and user in v:
+            raise ValueError(f"service cannot grant read access to itself: {user}")
         return v

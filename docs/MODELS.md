@@ -114,15 +114,15 @@ Owned by `models/contract.py`. Used by `utils/validate_manifest.py` and `utils/v
 from pydantic import BaseModel
 
 
-class ValidationResult(BaseModel):
-    valid: bool
-    errors: list[str] = []
-
-
 class ContractViolation(BaseModel):
     service: str
     field: str
     message: str
+
+
+class ValidationResult(BaseModel):
+    valid: bool
+    errors: list[ContractViolation] = []
 
 
 class ComposeDef(BaseModel):
@@ -147,7 +147,9 @@ class AppConfig(BaseModel):
     """Runtime config consumed by Python only. No infrastructure, no secrets."""
     env: str
     log_level: str = "INFO"
-    # extend with project-specific flags, timeouts, and URLs
+    healthcheck_retries: int = 3
+    healthcheck_interval_s: int = 10
+    reconciler_max_retries: int = 10
 ```
 
 * * *

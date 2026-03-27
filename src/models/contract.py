@@ -1,5 +1,6 @@
+
 from pydantic import BaseModel
-from typing import List
+
 
 class ContractViolation(BaseModel):
     service: str
@@ -8,10 +9,10 @@ class ContractViolation(BaseModel):
 
 class ValidationResult(BaseModel):
     valid: bool
-    errors: List[ContractViolation]
+    errors: list[ContractViolation]
 
 class ComposeDef(BaseModel):
     name: str
     image: str
     user: str
-    volumes: List[str]
+    volumes: list[str]

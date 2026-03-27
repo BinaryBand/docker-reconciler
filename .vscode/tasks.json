@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Validate: Service Contract",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python -m src.utils.validate_contract",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": {
+        "owner": "contract",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(ERROR|WARN)\\s+(.+):(\\d+):\\s+(.+)$",
+          "severity": 1, "file": 2, "line": 3, "message": 4
+        }
+      },
+      "runOptions": { "runOn": "folderOpen" }
+    },
+    {
+      "label": "Test: Molecule",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/molecule test -c ansible/molecule.yml",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Check: Complexity",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/lizard src/ -C 5 -L 25 -a 4 --output-file /tmp/lizard_out.txt; cat /tmp/lizard_out.txt",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": {
+        "owner": "lizard",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.+):(\\d+):\\s+(.+)\\s+\\(complexity:\\s*(\\d+)\\)$",
+          "file": 1, "line": 2, "message": 3
+        }
+      }
+    }
+  ]
+}

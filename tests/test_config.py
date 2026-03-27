@@ -1,4 +1,5 @@
 import pytest
+
 from src.utils.config import load_config
 
 

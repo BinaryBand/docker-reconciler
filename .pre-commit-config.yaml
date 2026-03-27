@@ -17,3 +17,16 @@ repos:
     rev: v2.1
     hooks:
       - id: import-linter
+  - repo: local
+    hooks:
+      - id: contract-validation
+        name: Service contract validation
+        entry: .venv/bin/python -m src.utils.validate_contract
+        language: system
+        pass_filenames: false
+
+      - id: duplicate-values
+        name: Duplicate value check
+        entry: .venv/bin/python -m src.utils.validate_no_duplicates
+        language: system
+        pass_filenames: false

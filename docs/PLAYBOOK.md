@@ -155,7 +155,7 @@ A component never reaches across its boundary to modify another component's stat
 
 For each component:
 
-```
+```text
 Name:            what it is called
 Responsibility:  one sentence — if it needs "and", split it
 Inputs:          declared types

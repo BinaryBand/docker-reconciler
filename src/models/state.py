@@ -1,9 +1,9 @@
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 
 
-class StateLabel(str, Enum):
+class StateLabel(StrEnum):
     T0 = "T0"
     T1 = "T1"
     T2 = "T2"
@@ -19,32 +19,52 @@ class StateLabel(str, Enum):
 
 class SystemState(BaseModel):
     label: StateLabel
-    steps: dict[str, bool]
+    volumes: bool = False
+    permissions: bool = False
+    compose: bool = False
+    post_start: bool = False
+    health: bool = False
 
     @classmethod
     def from_label(cls, label: StateLabel) -> "SystemState":
         return cls(
             label=label,
-            steps={
-                "provisioned": label in [StateLabel.T1, StateLabel.T2, StateLabel.T3, StateLabel.T4, StateLabel.T5],
-                "configured": label in [StateLabel.T2, StateLabel.T3, StateLabel.T4, StateLabel.T5],
-                "started": label in [StateLabel.T3, StateLabel.T4, StateLabel.T5],
-                "hooked": label in [StateLabel.T4, StateLabel.T5],
-                "healthy": label == StateLabel.T5,
-            }
+            volumes=label
+            in [
+                StateLabel.T1,
+                StateLabel.T2,
+                StateLabel.T3,
+                StateLabel.T4,
+                StateLabel.T5,
+            ],
+            permissions=label
+            in [StateLabel.T2, StateLabel.T3, StateLabel.T4, StateLabel.T5],
+            compose=label in [StateLabel.T3, StateLabel.T4, StateLabel.T5],
+            post_start=label in [StateLabel.T4, StateLabel.T5],
+            health=label == StateLabel.T5,
         )
 
-class TransitionMap:
-    def __init__(self):
-        self._transitions: dict[StateLabel, StateLabel] = {
-            StateLabel.T0: StateLabel.T1,
-            StateLabel.T1: StateLabel.T2,
-            StateLabel.T2: StateLabel.T3,
-            StateLabel.T3: StateLabel.T4,
-            StateLabel.T4: StateLabel.T5,
-        }
 
-    def next_toward(self, current: StateLabel, desired: StateLabel) -> StateLabel | None:
-        if current == desired:
-            return None
-        return self._transitions.get(current)
+class TransitionMap(BaseModel):
+    transitions: dict[StateLabel, list[StateLabel]] = {
+        StateLabel.T0: [StateLabel.T1],
+        StateLabel.T1: [StateLabel.T2, StateLabel.F1, StateLabel.T0],
+        StateLabel.T2: [StateLabel.T3, StateLabel.F2, StateLabel.T0],
+        StateLabel.T3: [StateLabel.T4, StateLabel.F3, StateLabel.T0],
+        StateLabel.T4: [StateLabel.T5, StateLabel.F4, StateLabel.T0],
+        StateLabel.T5: [StateLabel.T0],
+        StateLabel.F1: [StateLabel.T0],
+        StateLabel.F2: [StateLabel.T0],
+        StateLabel.F3: [StateLabel.T0],
+        StateLabel.F4: [StateLabel.T0],
+        StateLabel.F5: [StateLabel.T0],
+    }
+
+    def next_toward(
+        self, current: StateLabel, desired: StateLabel
+    ) -> StateLabel | None:
+        legal = self.transitions.get(current, [])
+        if desired in legal:
+            return desired
+        forward = [s for s in legal if not s.startswith("F") and s != StateLabel.T0]
+        return forward[0] if forward else None

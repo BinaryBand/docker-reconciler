@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 from src.models.manifest import ServiceManifest
-from src.models.state import SystemState, StateLabel
+from src.models.state import StateLabel, SystemState
 
 _SEQUENCE: list[StateLabel] = [
     StateLabel.T0,

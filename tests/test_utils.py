@@ -1,5 +1,5 @@
-from src.utils.validate_manifest import validate_manifest
 from src.models.manifest import ServiceManifest, VolumeSpec
+from src.utils.validate_manifest import validate_manifest
 
 
 def test_validate_manifest_duplicates():
@@ -16,7 +16,9 @@ def test_validate_manifest_volume_path_duplicate():
     v1 = VolumeSpec(name="data1", path="/srv/data", mode="0750")
     v2 = VolumeSpec(name="data2", path="/srv/data", mode="0750")
     m1 = ServiceManifest(service="baikal", uid=1000, user="svc_baikal", volumes=[v1])
-    m2 = ServiceManifest(service="jellyfin", uid=1001, user="svc_jellyfin", volumes=[v2])
+    m2 = ServiceManifest(
+        service="jellyfin", uid=1001, user="svc_jellyfin", volumes=[v2]
+    )
 
     result = validate_manifest([m1, m2])
     assert result.valid is False

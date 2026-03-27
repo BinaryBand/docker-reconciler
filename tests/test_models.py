@@ -1,7 +1,8 @@
 import pytest
-from src.models.manifest import VolumeSpec, ServiceManifest
-from src.models.state import StateLabel, TransitionMap, SystemState
+
+from src.models.manifest import ServiceManifest, VolumeSpec
 from src.models.service import ClusterState, ContainerState
+from src.models.state import StateLabel, SystemState, TransitionMap
 
 
 def test_volume_spec_mode():
@@ -32,12 +33,14 @@ def test_state_label():
 def test_transition_map():
     tm = TransitionMap()
     assert tm.next_toward(StateLabel.T0, StateLabel.T1) == StateLabel.T1
-    assert tm.next_toward(StateLabel.T0, StateLabel.T0) is None
+    assert tm.next_toward(StateLabel.T0, StateLabel.T5) == StateLabel.T1
 
 
 def test_cluster_state():
     cs = ClusterState(
-        containers=[ContainerState(service="web", running=True, healthy=True, exit_code=0)]
+        containers=[
+            ContainerState(service="web", running=True, healthy=True, exit_code=0)
+        ]
     )
     assert cs.all_running() is True
     assert cs.all_healthy() is True
@@ -47,7 +50,13 @@ def test_cluster_state():
 
 
 def test_failure_state_labels() -> None:
-    for label in [StateLabel.F1, StateLabel.F2, StateLabel.F3, StateLabel.F4, StateLabel.F5]:
+    for label in [
+        StateLabel.F1,
+        StateLabel.F2,
+        StateLabel.F3,
+        StateLabel.F4,
+        StateLabel.F5,
+    ]:
         assert label.value.startswith("F")
 
 
@@ -56,18 +65,18 @@ def test_failure_state_labels() -> None:
 
 def test_system_state_t0_all_false() -> None:
     s = SystemState.from_label(StateLabel.T0)
-    assert not any(s.steps.values())
+    assert not any([s.volumes, s.permissions, s.compose, s.post_start, s.health])
 
 
 def test_system_state_t5_all_true() -> None:
     s = SystemState.from_label(StateLabel.T5)
-    assert all(s.steps.values())
+    assert all([s.volumes, s.permissions, s.compose, s.post_start, s.health])
 
 
 def test_system_state_t3_partial() -> None:
     s = SystemState.from_label(StateLabel.T3)
-    assert s.steps["provisioned"] and s.steps["started"]
-    assert not s.steps["hooked"] and not s.steps["healthy"]
+    assert s.volumes and s.compose
+    assert not s.post_start and not s.health
 
 
 # --- VolumeSpec mode validator edge case ---
@@ -88,7 +97,7 @@ def test_service_manifest_no_self_read_access() -> None:
             uid=1001,
             user="svc_baikal",
             volumes=[],
-            read_access=["baikal"],
+            read_access=["svc_baikal"],
         )
 
 

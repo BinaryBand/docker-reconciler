@@ -1,9 +1,10 @@
 import time
+
 from src.models.manifest import ServiceManifest
 from src.models.state import StateLabel
 from src.reconciler.model import ReconcilerConfig
-from src.reconciler.transitions import build_transition_map
 from src.reconciler.observer import Observer
+from src.reconciler.transitions import build_transition_map
 
 _FAILURE_STATES: frozenset[StateLabel] = frozenset(
     [StateLabel.F1, StateLabel.F2, StateLabel.F3, StateLabel.F4, StateLabel.F5]
@@ -16,8 +17,12 @@ def issue_command(state: StateLabel) -> None:
     time.sleep(0.1)
 
 
-def reconcile(desired: StateLabel, config: ReconcilerConfig, manifests: list[ServiceManifest]) -> None:
-    """Run the reconciliation loop until desired state is reached or retries exhausted."""
+def reconcile(
+    desired: StateLabel, config: ReconcilerConfig, manifests: list[ServiceManifest]
+) -> None:
+    """
+    Run the reconciliation loop until desired state is reached or retries exhausted.
+    """
     transition_map = build_transition_map()
     observer = Observer()
 
@@ -32,7 +37,7 @@ def reconcile(desired: StateLabel, config: ReconcilerConfig, manifests: list[Ser
         if current.label in _FAILURE_STATES:
             raise RuntimeError(f"Reconciliation halted: {current.label}")
 
-        next_state = transition_map.get(current.label)
+        next_state = transition_map.next_toward(current.label, desired)
         if next_state is None:
             raise RuntimeError(f"No path from {current.label} to {desired}")
 

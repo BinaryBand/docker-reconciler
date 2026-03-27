@@ -1,8 +1,9 @@
-from src.utils.config import load_config
-from src.utils.ansible import load_manifests
-from src.reconciler.model import ReconcilerConfig
-from src.reconciler.controller import reconcile
 from src.models.state import StateLabel
+from src.reconciler.controller import reconcile
+from src.reconciler.model import ReconcilerConfig
+from src.utils.ansible import load_manifests
+from src.utils.config import load_config
+
 
 def main() -> None:
     # 1. Load config
@@ -13,10 +14,15 @@ def main() -> None:
     
     # 3. T0 gate (validate)
     print("Validating manifests...")
+    from src.utils.validate_contract import validate_contract
     from src.utils.validate_manifest import validate_manifest
     result = validate_manifest(manifests)
     if not result.valid:
         print(f"Validation failed: {result.errors}")
+        exit(1)
+    contract = validate_contract(manifests, "docker-compose.yml")
+    if not contract.valid:
+        print(f"Contract validation failed: {contract.errors}")
         exit(1)
     
     # 4. Build ReconcilerConfig
