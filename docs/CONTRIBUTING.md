@@ -110,17 +110,19 @@ repos:
     rev: v1.1.350
     hooks:
       - id: pyright
-  - repo: https://github.com/pre-commit/mirrors-lizard
-    rev: v1.17.10
-    hooks:
-      - id: lizard
-        args: ["-C", "5", "-L", "25", "-a", "4"]
   - repo: https://github.com/import-linter/import-linter
     rev: v2.1
     hooks:
       - id: import-linter
   - repo: local
     hooks:
+      - id: lizard
+        name: Lizard complexity check
+        entry: .venv/bin/lizard
+        language: system
+        args: ["src/", "-C", "5", "-L", "25", "-a", "4"]
+        pass_filenames: false
+
       - id: contract-validation
         name: Service contract validation
         entry: .venv/bin/python -m src.utils.validate_contract
