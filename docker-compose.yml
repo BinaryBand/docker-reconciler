@@ -1,13 +1,72 @@
-version: '3.8'
+version: "3.8"
+
 services:
-  web:
-    image: nginx:alpine
-    user: "1001"
+  init:
+    image: alpine:3.20
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        mkdir -p /etc/jellyfin /var/cache/jellyfin /var/lib/jellyfin /media /logs
+        && chown -R 1000:1000 /etc/jellyfin /var/cache/jellyfin /var/lib/jellyfin /media /logs
+        || true
     volumes:
-      - /srv/web/data:/usr/share/nginx/html
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      - /srv/jellyfin/config:/etc/jellyfin
+      - /srv/jellyfin/cache:/var/cache/jellyfin
+      - /srv/jellyfin/data:/var/lib/jellyfin
+      - /srv/media:/media
+      - /srv/logs:/logs
+
+  baikal:
+    image: ckulka/baikal:0.10.1
+    container_name: baikal
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    ports:
+      - "5234:80"
+    volumes:
+      - /srv/baikal/config:/var/www/baikal/config
+      - /srv/baikal/data:/var/www/baikal/Specific
+
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    security_opt:
+      - no-new-privileges:true
+    user: "1000:1000"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    group_add:
+      - "3000"
+    environment:
+      - JELLYFIN_CACHE_DIR=/var/cache/jellyfin
+      - JELLYFIN_CONFIG_DIR=/etc/jellyfin
+      - JELLYFIN_DATA_DIR=/var/lib/jellyfin
+      - JELLYFIN_LOG_DIR=/logs
+    volumes:
+      - /srv/jellyfin/config:/etc/jellyfin
+      - /srv/jellyfin/cache:/var/cache/jellyfin
+      - /srv/jellyfin/data:/var/lib/jellyfin
+      - /srv/media:/media
+      - /srv/logs:/logs
+    ports:
+      - "8096:8096"
+    restart: unless-stopped
+
+  restic:
+    image: restic/restic:0.18.1
+    restart: "no"
+    environment:
+      - RESTIC_REPOSITORY=/repo
+      - RESTIC_PASSWORD=${RESTIC_PASSWORD:?Set RESTIC_PASSWORD in .env}
+    volumes:
+      - /srv/restic/repo:/repo
+      - /srv/restic/backups:/backups
+    profiles:
+      - on-demand

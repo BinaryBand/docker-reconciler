@@ -1,3 +1,6 @@
 project_name: docker-reconciler
 manifest_dir: ansible/manifests
 compose_file: docker-compose.yml
+puid: 1000
+pgid: 1000
+media_gid: 3000

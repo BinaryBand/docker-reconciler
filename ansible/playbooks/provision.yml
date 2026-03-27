@@ -3,8 +3,8 @@
   tasks:
     - name: Create volume directories
       ansible.builtin.file:
-        path: "{{ item.path }}"
+        path: "{{ item.1.path }}"
         state: directory
-        owner: "{{ item.uid }}"
-        mode: "{{ item.mode }}"
-      loop: "{{ manifests | map(attribute='volumes') | flatten }}"
+        owner: "{{ item.0.uid }}"
+        mode: "{{ item.1.mode }}"
+      loop: "{{ manifests | subelements('volumes') }}"

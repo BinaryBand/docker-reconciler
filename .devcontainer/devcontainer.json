@@ -17,7 +17,9 @@
         "python.terminal.activateEnvironment": true,
         "python.analysis.typeCheckingMode": "strict",
         "editor.formatOnSave": true,
-        "[python]": { "editor.defaultFormatter": "charliermarsh.ruff" }
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        }
       }
     }
   }

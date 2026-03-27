@@ -1,25 +1,69 @@
-from src.models.manifest import ServiceManifest, VolumeSpec
-from src.models.state import StateLabel
+import pytest
+from unittest.mock import patch, MagicMock
 from src.reconciler.controller import reconcile
 from src.reconciler.model import ReconcilerConfig
+from src.models.state import StateLabel, SystemState
 from src.reconciler.transitions import build_transition_map
 
 
-def test_transition_map() -> None:
+def _config(retries: int = 10) -> ReconcilerConfig:
+    return ReconcilerConfig(desired_state=StateLabel.T5, max_retries=retries, dry_run=False)
+
+
+def _observer_returning(label: StateLabel) -> MagicMock:
+    obs = MagicMock()
+    obs.observe.return_value = SystemState.from_label(label)
+    return obs
+
+
+# --- Transition map completeness ---
+
+
+def test_transition_map_all_t_states() -> None:
     tm = build_transition_map()
-    assert tm[StateLabel.T0] == StateLabel.T1
-    assert tm[StateLabel.T4] == StateLabel.T5
-    assert StateLabel.F1 not in tm
+    expected = [
+        (StateLabel.T0, StateLabel.T1),
+        (StateLabel.T1, StateLabel.T2),
+        (StateLabel.T2, StateLabel.T3),
+        (StateLabel.T3, StateLabel.T4),
+        (StateLabel.T4, StateLabel.T5),
+    ]
+    for src, dst in expected:
+        assert tm[src] == dst
+
+
+def test_transition_map_no_f_states() -> None:
+    tm = build_transition_map()
+    for f in [StateLabel.F1, StateLabel.F2, StateLabel.F3, StateLabel.F4, StateLabel.F5]:
+        assert f not in tm
+
+
+# --- Reconciler error paths ---
+
+
+def test_reconcile_halts_on_failure_state() -> None:
+    obs = _observer_returning(StateLabel.F1)
+    with patch("src.reconciler.controller.Observer", return_value=obs):
+        with pytest.raises(RuntimeError, match="Reconciliation halted"):
+            reconcile(StateLabel.T5, _config(), [])
+
+
+def test_reconcile_exhausts_retries() -> None:
+    obs = _observer_returning(StateLabel.T0)  # never advances
+    with patch("src.reconciler.controller.Observer", return_value=obs):
+        with pytest.raises(RuntimeError, match="Max retries"):
+            reconcile(StateLabel.T5, _config(retries=3), [])
+
+
+def test_reconcile_no_transition_path() -> None:
+    """T5 observed, desired=T0: T5 not in transition map → RuntimeError."""
+    cfg = ReconcilerConfig(desired_state=StateLabel.T0, max_retries=5, dry_run=False)
+    obs = _observer_returning(StateLabel.T5)
+    with patch("src.reconciler.controller.Observer", return_value=obs):
+        with pytest.raises(RuntimeError, match="No path"):
+            reconcile(StateLabel.T0, cfg, [])
 
 
 def test_reconcile_loop_terminates() -> None:
     config = ReconcilerConfig(desired_state=StateLabel.T5, max_retries=10, dry_run=False)
-    manifests = [
-        ServiceManifest(
-            service="web",
-            uid=1001,
-            user="svc_web",
-            volumes=[VolumeSpec(name="data", path="/data", mode="0750")],
-        )
-    ]
-    reconcile(StateLabel.T5, config, manifests)
+    reconcile(StateLabel.T5, config, [])  # real Observer simulates T0→T5
