@@ -2,6 +2,7 @@
 - name: Provision storage
   hosts: all
   gather_facts: false
+  become: true
 
   tasks:
     - name: Find manifest files
