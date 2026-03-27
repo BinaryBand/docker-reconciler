@@ -14,7 +14,6 @@ def _check_service(
                 service=m.service, field="uid", message=f"duplicate UID: {m.uid}"
             )
         )
-    uids.add(m.uid)
     for v in m.volumes:
         if v.path in volume_paths:
             violations.append(
@@ -24,7 +23,6 @@ def _check_service(
                     message=f"duplicate volume path: {v.path}",
                 )
             )
-        volume_paths.add(v.path)
     return violations
 
 
@@ -35,4 +33,6 @@ def validate_manifest(manifests: list[ServiceManifest]) -> ValidationResult:
     volume_paths: set[str] = set()
     for m in manifests:
         errors.extend(_check_service(m, uids, volume_paths))
+        uids.add(m.uid)
+        volume_paths.update(v.path for v in m.volumes)
     return ValidationResult(valid=len(errors) == 0, errors=errors)
