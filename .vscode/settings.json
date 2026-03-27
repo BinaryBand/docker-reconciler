@@ -11,6 +11,7 @@
   "python.testing.pytestArgs": ["tests"],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
+  "ansible.ansible.path": "${workspaceFolder}/.venv/bin/ansible",
   "ansible.mcpServer.enabled": true,
   "python-envs.defaultEnvManager": "ms-python.python:poetry",
   "python-envs.defaultPackageManager": "ms-python.python:poetry"

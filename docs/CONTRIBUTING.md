@@ -173,7 +173,8 @@ repos:
   "terminal.integrated.shell.linux": "/bin/bash",
   "files.associations": { "*.j2": "jinja-yaml", "*.toml": "toml" },
   "editor.formatOnSave": true,
-  "[python]": { "editor.defaultFormatter": "charliermarsh.ruff" }
+  "[python]": { "editor.defaultFormatter": "charliermarsh.ruff" },
+  "ansible.ansible.path": "${workspaceFolder}/.venv/bin/ansible"
 }
 ```
 
