@@ -116,13 +116,15 @@ services:
 
 **`models/`** — pure Pydantic shapes. No I/O, no imports from anywhere else in `src/`. Every model is the authoritative shape for data crossing a concern boundary. See `MODELS.md` for full definitions.
 
-**`reconciler/controller.py`** — `reconcile(desired, config, manifests)`. Compares desired and actual `SystemState`; consults `config.transition_map` for the next legal move; returns a typed command. Never reads files or calls subprocesses.
+**`reconciler/controller.py`** — `reconcile(desired, config, manifests, run_command)`. Compares desired and actual `SystemState`; consults `config.transition_map` for the next legal move; calls the injected `run_command` callable to advance state. Never reads files or calls subprocesses directly.
 
 **`reconciler/observer.py`** — `observe() -> SystemState`. Queries current system state and coerces to a typed model. The only reconciler module that touches external state.
 
 **`reconciler/transitions.py`** — transition map and legal move resolution. Pure logic — no I/O.
 
 **`reconciler/model.py`** — `ReconcilerConfig`. Typed configuration for the reconciler — desired state, idempotency keys, retry policy.
+
+**`utils/executor.py`** — `run_command(state: StateLabel) -> None`. Maps state labels to subprocess commands and executes them. The only place in the codebase that spawns subprocesses for reconciliation commands. Injected into `reconciler/controller.py` as a callable — never imported from within `reconciler/`.
 
 **`utils/ansible.py`** — `load_inventory() -> AnsibleInventory`, `load_manifests() -> list[ServiceManifest]`. All raw YAML and subprocess output coerced to Pydantic models at ingestion. Raw data never leaves this module.
 
@@ -172,11 +174,10 @@ project/
 │   │   └── hosts
 │   ├── group_vars/
 │   │   └── all.yml                  # infrastructure-level vars — UIDs, global policy
-│   └── molecule.yml
 ├── config/
 │   ├── dev.toml
 ├── runbook/
-│   ├── quality-checks               # automates quality gates
+│   ├── .quality.py              # automates quality gates
 ├── src/
 │   ├── main.py
 │   ├── models/
@@ -193,6 +194,7 @@ project/
 │   └── utils/
 │       ├── ansible.py
 │       ├── config.py
+│       ├── executor.py
 │       ├── log.py
 │       ├── validate_manifest.py
 │       ├── validate_contract.py

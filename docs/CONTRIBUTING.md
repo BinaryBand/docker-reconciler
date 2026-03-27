@@ -235,10 +235,10 @@ Every rule is paired with its enforcement tier. Rules marked **review** have no 
 
 | Rule | Tier | Mechanism |
 | --- | --- | --- |
-| Function length ≤ 25 lines | Automated | Ruff |
+| Function length ≤ 25 lines | Automated | Lizard |
 | Cyclomatic complexity ≤ 5 | Automated | Lizard |
 | Nesting depth ≤ 3 | Review | — |
-| Parameters per function ≤ 4 | Automated | Ruff |
+| Parameters per function ≤ 4 | Automated | Lizard |
 | No type errors | Automated | Pyright (`strict`) |
 | No lint violations | Automated | Ruff |
 | No mutable globals | Automated | Pyright (`strict`) |
@@ -260,7 +260,7 @@ Prefer early returns over nested conditionals. If a function needs more than 25 
 ```text
 0. After cloning:              poetry install && pre-commit install --hook-type pre-push
 1. Branch from main
-2. Run quality checks:         python3 runbook/quality-checks
+2. Run quality checks:         python3 runbook/.quality.py
 3. Run tests:                  pytest
 4. Push — pre-commit hooks run automatically
 5. Open PR — check checklist

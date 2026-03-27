@@ -163,3 +163,52 @@ Outputs:         declared types
 Side effects:    none / or explicitly named
 Idempotent:      yes / no
 ```
+
+* * *
+
+## Step 5 — Testing Guidelines
+
+Testing is not a separate phase — it is a consequence of the design decisions made in steps 1–4. If a concern boundary is unclear, the tests will reflect that ambiguity. Fix the boundary first.
+
+### Foundational Testing Constraints
+
+**1. Every concern boundary must have a test.** A boundary declared in the contract matrix without a corresponding test is a gap. Tests at concern boundaries are higher value than tests deep inside a concern.
+
+**2. Tests must respect the same boundaries the code does.** A test that bypasses an abstraction layer to reach internal state is coupling the test suite to implementation details. Test the declared interface — not the internals.
+
+**3. A test that requires the full system to be running is an integration test, not a unit test.** Label it correctly. Unit tests must run without Docker, Ansible, or any network dependency. Integration tests are opt-in.
+
+**4. Mocking at the boundary, never inside it.** Mock the subprocess that Ansible runs — not Ansible's internal planner. Mock the Docker socket — not the observer's parsing logic. The mock target is the boundary of the concern under test.
+
+**5. The T0 gate must be fully covered.** If the reconciler can be started with a malformed manifest, the T0 gate is broken. Every manifest validation rule must have a test that proves it halts the system before any command is issued.
+
+### Test Tiers
+
+| Tier | Scope | Runs Without | Examples |
+| --- | --- | --- | --- |
+| **Unit** | Single module or function | Docker, Ansible, network | Model validators, transition map logic, validate_manifest, validate_contract against fixture files |
+| **Integration** | Concern boundary | Docker, network (Ansible mocked) | Observer with a real filesystem, executor with a patched subprocess |
+| **End-to-end** | Full reconciliation loop | — | Molecule converge on a local VM; reconciler dry-run against live compose stack |
+
+Unit tests run on every commit. Integration tests run on push. End-to-end tests are opt-in and run against a dedicated environment.
+
+### What to Test per Concern
+
+**Models (`models/`)** — Pydantic validators. Every `@field_validator` must have a test for the valid path and the invalid path. `SystemState.from_label` must be tested for every `StateLabel`. `TransitionMap.next_toward` must cover every reachable and unreachable state pair.
+
+**Reconciler (`reconciler/`)** — Controller: desired-state-already-reached, failure-state-halts, illegal-path-raises, retry-exhaustion, dry-run-skips-commands. Observer: derive each state label from mocked infrastructure conditions — do not touch the real filesystem or Docker. Transitions: every legal and illegal transition pair.
+
+**Utils (`utils/`)** — Validators: duplicate UID, duplicate volume path, missing service in Compose, UID mismatch, volume not mounted, no duplicates between TOML and group_vars. Config loader: valid file, missing file. Executor: known state dispatches correct command, unknown state is a no-op.
+
+**Concern Boundaries** — The T0 gate: reconciler does not advance past T0 when manifest validation fails. Import boundaries: `lint-imports` contract must be tested by the CI gate on every push. Compose↔manifest parity: `validate_contract` run against the real `docker-compose.yml`.
+
+### What Not to Test
+
+- Internal implementation choices that are not observable through the declared interface.
+- Pydantic's own validation machinery — test the project's validators, not Pydantic itself.
+- Infrastructure state that requires root access or a running container engine in unit tests.
+
+### Test Output Standards
+
+A failing test must name the rule it protects. A test named `test_validate_manifest` is not useful when it fails — name it `test_validate_manifest_rejects_duplicate_uid`. Every test name must be readable as a specification sentence: "validate_manifest rejects duplicate UID."
+

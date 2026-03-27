@@ -15,6 +15,15 @@ from src.reconciler.observer import Observer
 from src.reconciler.transitions import build_transition_map
 
 
+def _noop_runner(state: StateLabel) -> None:
+    """No-op command runner for tests that don't exercise command execution.
+
+    Accepts a StateLabel argument (required by the CommandRunner protocol) and
+    intentionally does nothing — used wherever tests verify control flow rather
+    than subprocess dispatch.
+    """
+
+
 def _config(retries: int = 10) -> ReconcilerConfig:
     return ReconcilerConfig(
         desired_state=StateLabel.T5,
@@ -67,17 +76,17 @@ def test_reconcile_halts_on_failure_state() -> None:
         patch("src.reconciler.controller.Observer", return_value=obs),
         pytest.raises(FailureStateError, match="failure state F1"),
     ):
-        reconcile(StateLabel.T5, _config(), [])
+        reconcile(StateLabel.T5, _config(), [], _noop_runner)
 
 
 def test_reconcile_exhausts_retries() -> None:
     obs = _observer_returning(StateLabel.T0)  # never advances
+    mock_runner = MagicMock()
     with (
         patch("src.reconciler.controller.Observer", return_value=obs),
-        patch("src.reconciler.controller.issue_command"),
         pytest.raises(RuntimeError, match="Max retries"),
     ):
-        reconcile(StateLabel.T5, _config(retries=3), [])
+        reconcile(StateLabel.T5, _config(retries=3), [], mock_runner)
 
 
 def test_reconcile_no_transition_path() -> None:
@@ -93,7 +102,7 @@ def test_reconcile_no_transition_path() -> None:
         patch("src.reconciler.controller.Observer", return_value=obs),
         pytest.raises(IllegalTransitionError, match="No legal path"),
     ):
-        reconcile(StateLabel.T3, cfg, [])
+        reconcile(StateLabel.T3, cfg, [], _noop_runner)
 
 
 def test_reconcile_loop_terminates() -> None:
@@ -106,7 +115,7 @@ def test_reconcile_loop_terminates() -> None:
     )
     obs = _observer_returning(StateLabel.T5)
     with patch("src.reconciler.controller.Observer", return_value=obs):
-        reconcile(StateLabel.T5, config, [])
+        reconcile(StateLabel.T5, config, [], _noop_runner)
 
 
 def test_reconcile_dry_run_skips_commands() -> None:
@@ -118,12 +127,10 @@ def test_reconcile_dry_run_skips_commands() -> None:
         dry_run=True,
     )
     obs = _observer_returning(StateLabel.T5)
-    with (
-        patch("src.reconciler.controller.Observer", return_value=obs),
-        patch("src.reconciler.controller.issue_command") as mock_cmd,
-    ):
-        reconcile(StateLabel.T5, cfg, [])
-    mock_cmd.assert_not_called()
+    mock_runner = MagicMock()
+    with patch("src.reconciler.controller.Observer", return_value=obs):
+        reconcile(StateLabel.T5, cfg, [], mock_runner)
+    mock_runner.assert_not_called()
 
 
 # --- Typed exception tests ---
@@ -149,7 +156,7 @@ def test_all_failure_states_raise_failure_state_error(
         patch("src.reconciler.controller.Observer", return_value=obs),
         pytest.raises(FailureStateError, match=failure_state),
     ):
-        reconcile(StateLabel.T5, _config(), [])
+        reconcile(StateLabel.T5, _config(), [], _noop_runner)
 
 
 # --- Observer unit tests ---
@@ -254,3 +261,56 @@ def test_observer_t4_when_health_check_failing() -> None:
     ):
         state = Observer().observe([_MANIFEST])
     assert state.label == StateLabel.T4
+
+
+# --- Executor unit tests ---
+
+
+def test_executor_run_command_calls_subprocess_for_known_state() -> None:
+    """run_command dispatches a subprocess call for states with mapped commands."""
+    from src.utils.executor import run_command
+
+    with patch("src.utils.executor.subprocess.run") as mock_run:
+        run_command(StateLabel.T1)
+    mock_run.assert_called_once()
+    cmd = mock_run.call_args[0][0]
+    assert "ansible-playbook" in cmd
+    assert "--tags" in cmd
+    assert "volumes" in cmd
+
+
+def test_executor_run_command_noop_for_unmapped_state() -> None:
+    """run_command does nothing for states without a mapped command (e.g. T0, T4, T5)."""
+    from src.utils.executor import run_command
+
+    with patch("src.utils.executor.subprocess.run") as mock_run:
+        run_command(StateLabel.T0)
+        run_command(StateLabel.T4)
+        run_command(StateLabel.T5)
+    mock_run.assert_not_called()
+
+
+def test_reconcile_runner_called_on_advance() -> None:
+    """reconcile() passes each next-state to the run_command callable when not dry_run."""
+    states = [
+        SystemState.from_label(StateLabel.T0),
+        SystemState.from_label(StateLabel.T1),
+        SystemState.from_label(StateLabel.T2),
+        SystemState.from_label(StateLabel.T3),
+        SystemState.from_label(StateLabel.T4),
+        SystemState.from_label(StateLabel.T5),
+    ]
+    obs = MagicMock()
+    obs.observe.side_effect = states
+    mock_runner = MagicMock()
+    with patch("src.reconciler.controller.Observer", return_value=obs):
+        reconcile(StateLabel.T5, _config(retries=10), [], mock_runner)
+    assert mock_runner.call_count == 5
+    called_states = [call.args[0] for call in mock_runner.call_args_list]
+    assert called_states == [
+        StateLabel.T1,
+        StateLabel.T2,
+        StateLabel.T3,
+        StateLabel.T4,
+        StateLabel.T5,
+    ]
