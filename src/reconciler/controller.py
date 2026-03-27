@@ -7,6 +7,15 @@ from src.models.state import StateLabel
 from src.reconciler.model import ReconcilerConfig
 from src.reconciler.observer import Observer
 
+
+class FailureStateError(RuntimeError):
+    """Raised when reconciliation encounters a failure state and must halt."""
+
+
+class IllegalTransitionError(ValueError):
+    """Raised when an attempted state transition is not permitted by the transition map."""
+
+
 _FAILURE_STATES: frozenset[StateLabel] = frozenset(
     [StateLabel.F1, StateLabel.F2, StateLabel.F3, StateLabel.F4, StateLabel.F5]
 )
@@ -48,10 +57,10 @@ def _advance(
     if current == desired:
         return True
     if current in _FAILURE_STATES:
-        raise RuntimeError(f"Reconciliation halted: {current}")
+        raise FailureStateError(f"Reconciliation halted: system is in failure state {current}")
     next_state = config.transition_map.next_toward(current, desired)
     if next_state is None:
-        raise RuntimeError(f"No path from {current} to {desired}")
+        raise IllegalTransitionError(f"No legal path from {current} to {desired}")
     if not config.dry_run:
         issue_command(next_state)
     return False

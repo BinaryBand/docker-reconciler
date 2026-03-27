@@ -120,3 +120,69 @@ def test_cluster_state_empty() -> None:
     cs = ClusterState(containers=[])
     assert cs.all_running() is True
     assert cs.all_healthy() is True
+
+
+# --- TransitionMap.is_legal_transition ---
+
+
+def test_is_legal_transition_valid() -> None:
+    tm = TransitionMap()
+    assert tm.is_legal_transition(StateLabel.T0, StateLabel.T1)
+    assert tm.is_legal_transition(StateLabel.T1, StateLabel.T2)
+    assert tm.is_legal_transition(StateLabel.T1, StateLabel.F1)
+    assert tm.is_legal_transition(StateLabel.T4, StateLabel.T5)
+    assert tm.is_legal_transition(StateLabel.F3, StateLabel.T0)
+
+
+def test_is_legal_transition_invalid() -> None:
+    tm = TransitionMap()
+    assert not tm.is_legal_transition(StateLabel.T0, StateLabel.T3)
+    assert not tm.is_legal_transition(StateLabel.T1, StateLabel.F2)
+    assert not tm.is_legal_transition(StateLabel.F1, StateLabel.T1)
+    assert not tm.is_legal_transition(StateLabel.T5, StateLabel.T4)
+
+
+# --- TransitionMap.next_toward edge cases ---
+
+
+def test_next_toward_each_step() -> None:
+    tm = TransitionMap()
+    steps = [
+        (StateLabel.T0, StateLabel.T1),
+        (StateLabel.T1, StateLabel.T2),
+        (StateLabel.T2, StateLabel.T3),
+        (StateLabel.T3, StateLabel.T4),
+        (StateLabel.T4, StateLabel.T5),
+    ]
+    for current, expected_next in steps:
+        assert tm.next_toward(current, StateLabel.T5) == expected_next
+
+
+def test_next_toward_direct_reach() -> None:
+    tm = TransitionMap()
+    assert tm.next_toward(StateLabel.T4, StateLabel.T5) == StateLabel.T5
+    assert tm.next_toward(StateLabel.T1, StateLabel.F1) == StateLabel.F1
+
+
+def test_next_toward_no_forward_path() -> None:
+    tm = TransitionMap()
+    assert tm.next_toward(StateLabel.T5, StateLabel.T3) is None
+
+
+def test_next_toward_f_state_to_t0() -> None:
+    tm = TransitionMap()
+    for f in [StateLabel.F1, StateLabel.F2, StateLabel.F3, StateLabel.F4, StateLabel.F5]:
+        assert tm.next_toward(f, StateLabel.T0) == StateLabel.T0
+
+
+def test_next_toward_f_state_no_forward_to_t5() -> None:
+    tm = TransitionMap()
+    for f in [StateLabel.F1, StateLabel.F2, StateLabel.F3, StateLabel.F4, StateLabel.F5]:
+        assert tm.next_toward(f, StateLabel.T5) is None
+
+
+def test_next_toward_deterministic() -> None:
+    """next_toward always returns the same result for the same inputs."""
+    tm = TransitionMap()
+    for _ in range(5):
+        assert tm.next_toward(StateLabel.T1, StateLabel.T5) == StateLabel.T2

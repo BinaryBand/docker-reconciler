@@ -76,6 +76,12 @@ class TransitionMap(BaseModel):
             if not s.startswith("F") and s != StateLabel.T0
         ]
 
+    def is_legal_transition(
+        self, from_state: StateLabel, to_state: StateLabel
+    ) -> bool:
+        """Returns True if transitioning from from_state to to_state is permitted."""
+        return to_state in self.transitions.get(from_state, [])
+
     def next_toward(
         self, current: StateLabel, desired: StateLabel
     ) -> StateLabel | None:
