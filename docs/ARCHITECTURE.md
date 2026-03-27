@@ -67,19 +67,21 @@ Each service declares its own storage footprint. Ansible provisions from it; Pyt
 
 **`ansible/manifests/<service>.yml`:**
 
+Each manifest file contains a YAML list of service entries (one entry per service declared in that file).
+
 ```yaml
-service: api
-uid: 1001
-user: svc_api
-volumes:
-  - name: data
-    path: /srv/api/data
-    mode: "0750"
-  - name: logs
-    path: /srv/api/logs
-    mode: "0750"
-read_access:
-  - svc_worker
+- service: api
+  uid: 1001
+  user: svc_api
+  volumes:
+    - name: data
+      path: /srv/api/data
+      mode: "0750"
+    - name: logs
+      path: /srv/api/logs
+      mode: "0750"
+  read_access:
+    - svc_worker
 ```
 
 **`docker-compose.yml`** — Service Topology owns images, healthchecks, and runtime config:
@@ -102,7 +104,7 @@ services:
 
 `ansible/roles/storage/` — reads each manifest; creates service accounts, provisions volume paths, sets permissions, applies `read_access` ACLs. No implicit cross-service access.
 
-`ansible/roles/validate/` — asserts every UID and volume path in `docker-compose.yml` matches its manifest; fails CI before provisioning.
+`ansible/roles/validate/` — runtime filesystem defense-in-depth check: asserts that every volume path listed in its manifest exists on disk and has the expected permissions. Does **not** perform Compose↔manifest parity enforcement — that is owned by `src/utils/validate_contract.py`.
 
 * * *
 
@@ -128,7 +130,7 @@ services:
 
 **`utils/validate_manifest.py`** — `validate_manifest(manifests: list[ServiceManifest]) -> ValidationResult`. Checks business rules: duplicate UIDs and duplicate volume paths. Self-referencing `read_access` and valid mode strings are checked by Pydantic model validators.
 
-**`utils/validate_contract.py`** — `validate_contract(manifests: list[ServiceManifest], compose: str) -> ValidationResult`. Asserts UIDs and volume paths in Compose match manifests.
+**`utils/validate_contract.py`** — `validate_contract(manifests: list[ServiceManifest], compose_path: str) -> ValidationResult`. Authoritative Compose↔manifest contract validator: asserts that every service in manifests is present in Compose, UIDs match, and all manifest volume paths are mounted. This is the single enforcement point for Compose↔manifest parity — run at T0 and invokable as `python -m src.utils.validate_contract`.
 
 **`utils/validate_no_duplicates.py`** — Checks for overlap between TOML config and Ansible group vars.
 
@@ -214,7 +216,7 @@ project/
 - [ ] **Import Boundaries** — `models/` imports nothing; `reconciler/` and `utils/` import from `models/` only; enforced by `import-linter`
 - [ ] **Volume Isolation** — each volume owned by its service account at `0750`; cross-service read access via explicit `acl:` entries in manifest `read_access` only
 - [ ] **Topology Boundary** — Compose owns images, healthchecks, and runtime service config; infrastructure prerequisites belong to Ansible manifests
-- [ ] **Contract Validation** — `roles/validate/` asserts Compose UIDs and paths match manifests; `validate_contract.py` asserts the same at T0; both must pass
+- [ ] **Contract Validation** — `src/utils/validate_contract.py` is the authoritative Compose↔manifest parity check (service presence, UIDs, volume paths) run at T0; `ansible/roles/validate/` is a defense-in-depth runtime check (filesystem existence and permissions) that runs after provisioning — the two roles are complementary and do not duplicate each other
 - [ ] **Startup Sequencing** — T0 -> T1 -> T2 -> T3 -> T4 -> T5; enforced by Reconciler transition map
 - [ ] **Idempotency** — Ansible tasks idempotent; Reconciler uses idempotency keys; Compose defines declarative desired state
 - [ ] **Secrets Isolation** — secrets in Ansible Vault only; never in manifests, TOML, or Compose
