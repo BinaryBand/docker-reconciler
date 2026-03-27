@@ -11,7 +11,7 @@ See `ARCHITECTURE.md` for module ownership and import boundaries.
 Owned by `models/manifest.py`. Ingested from `ansible/manifests/<service>.yml` by `utils/ansible.py`.
 
 ```python
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ValidationInfo, field_validator
 
 
 class VolumeSpec(BaseModel):
@@ -36,7 +36,7 @@ class ServiceManifest(BaseModel):
 
     @field_validator("read_access")
     @classmethod
-    def no_self_reference(cls, v: list[str], info: Any) -> list[str]:
+    def no_self_reference(cls, v: list[str], info: ValidationInfo) -> list[str]:
         user = info.data.get("user")
         if user and user in v:
             raise ValueError(f"service cannot grant read access to itself: {user}")
@@ -122,7 +122,7 @@ class TransitionMap(BaseModel):
 Owned by `models/contract.py`. Used by `utils/validate_manifest.py` and `utils/validate_contract.py`.
 
 ```python
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class ContractViolation(BaseModel):
@@ -134,6 +134,27 @@ class ContractViolation(BaseModel):
 class ValidationResult(BaseModel):
     valid: bool
     errors: list[ContractViolation]
+
+
+class ComposeService(BaseModel):
+    """Minimal docker-compose service entry for contract validation."""
+    user: str | None = None
+    volumes: list[str] = []
+    model_config = ConfigDict(extra="allow")
+
+    @field_validator("volumes", mode="before")
+    @classmethod
+    def keep_string_volumes(cls, v: object) -> list[str]:
+        """Retain only string-form volume mounts; ignore long-form objects."""
+        if not isinstance(v, list):
+            return []
+        return [item for item in v if isinstance(item, str)]
+
+
+class ComposeFile(BaseModel):
+    """Minimal docker-compose file structure for contract validation."""
+    services: dict[str, ComposeService] = {}
+    model_config = ConfigDict(extra="allow")
 ```
 
 * * *
@@ -149,10 +170,10 @@ from pydantic import BaseModel
 class AppConfig(BaseModel):
     """Runtime config consumed by Python only. No infrastructure, no secrets."""
     env: str
-    log_level: str = "INFO"
-    healthcheck_retries: int = 3
-    healthcheck_interval_s: int = 10
-    reconciler_max_retries: int = 10
+    log_level: str
+    healthcheck_retries: int
+    healthcheck_interval_s: int
+    reconciler_max_retries: int
 ```
 
 * * *
@@ -163,7 +184,7 @@ Owned by `reconciler/model.py`. Used by `main.py` to configure the reconciler at
 
 ```python
 from pydantic import BaseModel
-from models.state import StateLabel, TransitionMap
+from src.models.state import StateLabel, TransitionMap
 
 
 class ReconcilerConfig(BaseModel):
