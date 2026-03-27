@@ -1,24 +1,36 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.0
-    hooks:
-      - id: ruff
-      - id: ruff-format
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.350
-    hooks:
-      - id: pyright
-  - repo: https://github.com/import-linter/import-linter
-    rev: v2.1
-    hooks:
-      - id: import-linter
   - repo: local
     hooks:
+      - id: ruff
+        name: Ruff lint
+        entry: .venv/bin/ruff check
+        language: system
+        types: [python]
+
+      - id: ruff-format
+        name: Ruff format
+        entry: .venv/bin/ruff format --check
+        language: system
+        types: [python]
+
+      - id: pyright
+        name: Pyright type check
+        entry: .venv/bin/pyright
+        language: system
+        types: [python]
+        pass_filenames: false
+
       - id: lizard
         name: Lizard complexity check
         entry: .venv/bin/lizard
         language: system
         args: ["src/", "-C", "5", "-L", "25", "-a", "4"]
+        pass_filenames: false
+
+      - id: import-linter
+        name: Import linter
+        entry: .venv/bin/lint-imports
+        language: system
         pass_filenames: false
 
       - id: contract-validation
