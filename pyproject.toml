@@ -1,29 +1,36 @@
-[project]
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
 name = "docker-reconciler"
 version = "0.1.0"
 description = "Stub reconciler"
-dependencies = [
-    "pydantic",
-    "tomli; python_version < '3.11'",
-]
+authors = ["Your Name <you@example.com>"]
+packages = [{ include = "src" }]
+package-mode = false
 
-[project.scripts]
+[tool.poetry.dependencies]
+python = "^3.11"
+pydantic = "^2.0.0"
+tomli = { version = "^2.0.1", markers = "python_version < '3.11'" }
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.9.0"
+pyright = "^1.1.0"
+lizard = "^1.17.10"
+import-linter = "^2.0.0"
+pre-commit = "^4.0.0"
+pytest = "^8.0.0"
+ansible = ">=8.0.0"
+ansible-lint = ">=6.0.0"
+pyyaml = "^6.0.0"
+ansible-dev-tools = "^26.3.1"
+
+[tool.poetry.scripts]
 reconciler = "src.main:main"
 test-dev-env = "scripts.test_dev_env:main"
 run-e2e-container-test = "runbook.run_e2e_container_test:main"
-
-[project.optional-dependencies]
-dev = [
-    "ruff",
-    "pyright",
-    "lizard",
-    "import-linter",
-    "pre-commit",
-    "pytest",
-    "ansible",
-    "ansible-lint",
-    "pyyaml",
-]
 
 [tool.ruff]
 line-length = 88

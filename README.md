@@ -8,20 +8,27 @@ A reference implementation of a reconciliation loop for Docker services. Ansible
 
 ## Setup
 
-### Recommended: Dev Container
+### Poetry
 
-Open the project in VS Code and select **Reopen in Container** when prompted (requires the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension). The container automatically installs all dependencies and pre-commit hooks.
-
-### Manual
+This project uses [Poetry](https://python-poetry.org/) for dependency management:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+poetry install
 pre-commit install --hook-type pre-push
 ```
 
-Requires Python 3.11+, Docker, Docker Compose, and Ansible.
+### Dependencies
+
+Requires:
+
+- Python 3.11+
+- Docker
+- Docker Compose
+- [Poetry](https://python-poetry.org/)
+- [pre-commit](https://pre-commit.com/)
+- [Ansible](https://www.ansible.com/) (including `ansible-lint`)
+
+You can install the required tools using your system's package manager (e.g., Homebrew, apt).
 
 ---
 
@@ -30,8 +37,6 @@ Requires Python 3.11+, Docker, Docker Compose, and Ansible.
 ```bash
 pytest -v
 ```
-
-27 tests, all passing. See [TESTING.md](TESTING.md) for the full coverage plan.
 
 ---
 
@@ -63,7 +68,7 @@ ansible-playbook ansible/playbooks/provision.yml -i ansible/inventory/hosts --ch
 Directories created:
 
 | Path | Owner | Mode | Service |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `/srv/baikal/config` | 1001 | 0750 | baikal |
 | `/srv/baikal/data` | 1001 | 0750 | baikal |
 | `/srv/jellyfin/config` | 1000 | 0750 | jellyfin |
@@ -114,9 +119,9 @@ docker compose down
 ## Service endpoints
 
 | Service | URL |
-|---|---|
-| Jellyfin | http://localhost:8096 |
-| Baikal | http://localhost:5234 |
+| --- | --- |
+| Jellyfin | `http://localhost:8096` |
+| Baikal | `http://localhost:5234` |
 
 ---
 
@@ -129,7 +134,7 @@ python -m src.main
 ```
 
 | State | Meaning |
-|---|---|
+| --- | --- |
 | T0 | Manifests validated (Pydantic) |
 | T1 | Volumes provisioned (Ansible) |
 | T2 | Permissions applied (Ansible) |
@@ -139,13 +144,3 @@ python -m src.main
 | F1–F5 | Failure at the corresponding T-state — reconciler halts |
 
 The observer is currently a simulation that steps through T0→T5 on each call. `load_manifests()` and `issue_command()` are stubs pending real implementation.
-
----
-
-## Documentation
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) — import boundaries and design constraints
-- [MODELS.md](MODELS.md) — data model reference
-- [CONTRIBUTING.md](CONTRIBUTING.md) — validation workflow and PR checklist
-- [MIGRATION.md](MIGRATION.md) — how cloud-apps services were migrated in
-- [TESTING.md](TESTING.md) — test coverage plan

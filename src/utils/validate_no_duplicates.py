@@ -1,6 +1,7 @@
 import sys
 import tomllib
 from pathlib import Path
+from typing import Any, cast
 
 import yaml
 
@@ -12,14 +13,18 @@ def load_toml_keys() -> set[str]:
     keys: set[str] = set()
     for path in CONFIG_DIR.glob("*.toml"):
         with path.open("rb") as f:
-            keys.update(tomllib.load(f).keys())
+            data: Any = tomllib.load(f)
+            if isinstance(data, dict):
+                keys.update(cast(dict[str, Any], data).keys())
     return keys
 
 
 def load_yaml_keys() -> set[str]:
     with GROUP_VARS.open() as f:
-        data = yaml.safe_load(f) or {}
-    return set(data.keys())
+        data: Any = yaml.safe_load(f) or {}
+    if isinstance(data, dict):
+        return set(cast(dict[str, Any], data).keys())
+    return set()
 
 
 def validate() -> list[str]:

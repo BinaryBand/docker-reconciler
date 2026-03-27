@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel
 
 
@@ -7,6 +6,7 @@ class ContainerState(BaseModel):
     running: bool
     healthy: bool | None = None
     exit_code: int | None = None
+
 
 class ClusterState(BaseModel):
     containers: list[ContainerState]

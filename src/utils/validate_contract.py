@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 import yaml
 
@@ -7,9 +8,10 @@ from src.models.contract import ContractViolation, ValidationResult
 from src.models.manifest import ServiceManifest
 
 
-def _load_compose(compose_path: str) -> dict:
+def _load_compose(compose_path: str) -> dict[str, Any]:
     with Path(compose_path).open() as f:
-        return yaml.safe_load(f).get("services", {})
+        data: Any = yaml.safe_load(f)
+        return cast(dict[str, Any], data.get("services", {}))
 
 
 def validate_contract(
@@ -29,7 +31,7 @@ def validate_contract(
             )
             continue
 
-        c = compose[svc.service]
+        c = cast(dict[str, Any], compose[svc.service])
 
         if "user" in c and str(c["user"]) != str(svc.uid):
             violations.append(
@@ -40,7 +42,13 @@ def validate_contract(
                 )
             )
 
-        declared_mounts = [v.split(":")[0] for v in c.get("volumes", [])]
+        declared_mounts: list[str] = []
+        volumes: Any = c.get("volumes", [])
+        if isinstance(volumes, list):
+            for v in cast(list[Any], volumes):
+                if isinstance(v, str):
+                    declared_mounts.append(v.split(":")[0])
+
         for vol in svc.volumes:
             if vol.path not in declared_mounts:
                 violations.append(

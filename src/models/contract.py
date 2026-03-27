@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel
 
 
@@ -7,9 +6,11 @@ class ContractViolation(BaseModel):
     field: str
     message: str
 
+
 class ValidationResult(BaseModel):
     valid: bool
     errors: list[ContractViolation]
+
 
 class ComposeDef(BaseModel):
     name: str
