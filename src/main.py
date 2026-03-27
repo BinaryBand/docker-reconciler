@@ -1,55 +1,43 @@
 """Main entry point for the docker-reconciler application."""
 
-from src.models.state import StateLabel
+from src.models.manifest import ServiceManifest
+from src.models.state import StateLabel, TransitionMap
 from src.reconciler.controller import reconcile
 from src.reconciler.model import ReconcilerConfig
-from src.utils.ansible import load_manifests
+from src.utils.ansible import load_inventory, load_manifests
 from src.utils.config import load_config
+from src.utils.log import setup_logging
+from src.utils.validate_contract import validate_contract
+from src.utils.validate_manifest import validate_manifest
+
+
+def _validate_inputs(manifests: list[ServiceManifest]) -> bool:
+    print("Validating manifests...")
+    result = validate_manifest(manifests)
+    if not result.valid:
+        print(f"Validation failed: {result.errors}")
+        return False
+    contract = validate_contract(manifests, "docker-compose.yml")
+    if not contract.valid:
+        print(f"Contract validation failed: {contract.errors}")
+        return False
+    return True
 
 
 def main() -> None:
     """Execute the main reconciliation loop."""
-    # 1. Load config
     config = load_config("dev")
-
-    # 2. Load manifests
     manifests = load_manifests("ansible/manifests")
-
-    # 3. T0 gate (validate)
-    print("Validating manifests...")
-    from src.utils.validate_contract import validate_contract
-    from src.utils.validate_manifest import validate_manifest
-
-    result = validate_manifest(manifests)
-    if not result.valid:
-        print(f"Validation failed: {result.errors}")
+    if not _validate_inputs(manifests):
         exit(1)
-    contract = validate_contract(manifests, "docker-compose.yml")
-    if not contract.valid:
-        print(f"Contract validation failed: {contract.errors}")
-        exit(1)
-
-    # 1a. Setup logging
-    from src.utils.log import setup_logging
-
     setup_logging(config.log_level)
-
-    # 1b. Load inventory
-    from src.utils.ansible import load_inventory
-
     load_inventory("ansible/inventory/hosts")
-
-    # 4. Build ReconcilerConfig
-    from src.models.state import TransitionMap
-
     recon_config = ReconcilerConfig(
         desired_state=StateLabel.T5,
         transition_map=TransitionMap(),
         max_retries=config.reconciler_max_retries,
         dry_run=False,
     )
-
-    # 5. Reconcile
     reconcile(StateLabel.T5, recon_config, manifests)
     print("Reconciliation complete.")
 

@@ -16,12 +16,3 @@ class ValidationResult(BaseModel):
 
     valid: bool
     errors: list[ContractViolation]
-
-
-class ComposeDef(BaseModel):
-    """Represents a Docker Compose service definition."""
-
-    name: str
-    image: str
-    user: str
-    volumes: list[str]

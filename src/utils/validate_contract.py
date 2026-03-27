@@ -17,6 +17,42 @@ def _load_compose(compose_path: str) -> dict[str, Any]:
         return cast(dict[str, Any], data.get("services", {}))
 
 
+def _check_uid(
+    svc: ServiceManifest, c: dict[str, Any], violations: list[ContractViolation]
+) -> None:
+    if "user" in c and str(c["user"]).split(":")[0] != str(svc.uid):
+        violations.append(
+            ContractViolation(
+                service=svc.service,
+                field="uid",
+                message=f"UID mismatch: expected {svc.uid}, got {c['user']}",
+            )
+        )
+
+
+def _get_declared_mounts(c: dict[str, Any]) -> list[str]:
+    volumes: Any = c.get("volumes", [])
+    if not isinstance(volumes, list):
+        return []
+    return [v.split(":")[0] for v in cast(list[Any], volumes) if isinstance(v, str)]
+
+
+def _check_volumes(
+    svc: ServiceManifest,
+    declared_mounts: list[str],
+    violations: list[ContractViolation],
+) -> None:
+    for vol in svc.volumes:
+        if vol.path not in declared_mounts:
+            violations.append(
+                ContractViolation(
+                    service=svc.service,
+                    field="volumes",
+                    message=f"volume '{vol.path}' not mounted in Compose",
+                )
+            )
+
+
 def validate_contract(
     manifests: list[ServiceManifest], compose_path: str
 ) -> ValidationResult:
@@ -34,34 +70,9 @@ def validate_contract(
                 )
             )
             continue
-
         c = cast(dict[str, Any], compose[svc.service])
-
-        if "user" in c and str(c["user"]).split(":")[0] != str(svc.uid):
-            violations.append(
-                ContractViolation(
-                    service=svc.service,
-                    field="uid",
-                    message=f"UID mismatch: expected {svc.uid}, got {c['user']}",
-                )
-            )
-
-        declared_mounts: list[str] = []
-        volumes: Any = c.get("volumes", [])
-        if isinstance(volumes, list):
-            for v in cast(list[Any], volumes):
-                if isinstance(v, str):
-                    declared_mounts.append(v.split(":")[0])
-
-        for vol in svc.volumes:
-            if vol.path not in declared_mounts:
-                violations.append(
-                    ContractViolation(
-                        service=svc.service,
-                        field="volumes",
-                        message=f"volume '{vol.path}' not mounted in Compose",
-                    )
-                )
+        _check_uid(svc, c, violations)
+        _check_volumes(svc, _get_declared_mounts(c), violations)
 
     return ValidationResult(valid=len(violations) == 0, errors=violations)
 

@@ -136,7 +136,7 @@ services:
 
 ### Import Boundaries
 
-```
+```text
 main.py         -> models/*, reconciler/*, utils/*
 reconciler/*    -> models/* only
 utils/*         -> models/* only
@@ -181,7 +181,8 @@ project/
 │   │   ├── manifest.py              # ServiceManifest, VolumeSpec
 │   │   ├── state.py                 # SystemState, StateLabel, TransitionMap
 │   │   ├── contract.py              # ValidationResult, ContractViolation
-│   │   └── service.py               # ClusterState, ContainerState
+│   │   ├── service.py               # ClusterState, ContainerState
+│   │   └── ansible.py               # AnsibleHost, AnsibleInventory
 │   ├── reconciler/
 │   │   ├── controller.py
 │   │   ├── observer.py

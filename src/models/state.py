@@ -69,6 +69,13 @@ class TransitionMap(BaseModel):
         StateLabel.F5: [StateLabel.T0],
     }
 
+    def _forward_neighbors(self, current: StateLabel) -> list[StateLabel]:
+        return [
+            s
+            for s in self.transitions.get(current, [])
+            if not s.startswith("F") and s != StateLabel.T0
+        ]
+
     def next_toward(
         self, current: StateLabel, desired: StateLabel
     ) -> StateLabel | None:
@@ -76,5 +83,5 @@ class TransitionMap(BaseModel):
         legal = self.transitions.get(current, [])
         if desired in legal:
             return desired
-        forward = [s for s in legal if not s.startswith("F") and s != StateLabel.T0]
+        forward = self._forward_neighbors(current)
         return forward[0] if forward else None

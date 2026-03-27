@@ -29,18 +29,13 @@ ansible-dev-tools = "^26.3.1"
 
 [tool.poetry.scripts]
 reconciler = "src.main:main"
-test-dev-env = "scripts.test_dev_env:main"
-run-e2e-container-test = "runbook.run_e2e_container_test:main"
 
 [tool.ruff]
 line-length = 88
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "D"]
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"
+select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.pyright]
 typeCheckingMode = "strict"

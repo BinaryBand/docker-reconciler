@@ -134,14 +134,6 @@ class ContractViolation(BaseModel):
 class ValidationResult(BaseModel):
     valid: bool
     errors: list[ContractViolation]
-
-
-class ComposeDef(BaseModel):
-    """Typed representation of a docker-compose.yml service block."""
-    name: str
-    image: str
-    user: str
-    volumes: list[str]
 ```
 
 * * *
@@ -214,7 +206,7 @@ class ClusterState(BaseModel):
 
 ## Ansible Models
 
-Owned by `utils/ansible.py`. Coerced immediately at ingestion — raw subprocess output never leaves this module.
+Owned by `models/ansible.py`. Ingested and coerced by `utils/ansible.py` — raw subprocess output never leaves that module.
 
 ```python
 from pydantic import BaseModel

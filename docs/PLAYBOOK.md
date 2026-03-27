@@ -67,7 +67,7 @@ Under the Command model, all contracts route through Orchestration. The matrix h
 
 For each non-empty cell, record:
 
-```
+```text
 Command:   what Orchestration instructs the concern to do
 Status:    what the concern returns on completion or failure
 Authority: Orchestration — always

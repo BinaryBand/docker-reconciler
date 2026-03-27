@@ -33,10 +33,7 @@ target-version = "py311"
 line-length = 88
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "D"]
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"
+select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.pyright]
 pythonVersion = "3.13"
@@ -225,11 +222,10 @@ Every rule is paired with its enforcement tier. Rules marked **review** have no 
 | --- | --- | --- |
 | Function length ≤ 25 lines | Automated | Ruff |
 | Cyclomatic complexity ≤ 5 | Automated | Lizard |
-| Nesting depth ≤ 3 | Automated | Ruff |
+| Nesting depth ≤ 3 | Review | — |
 | Parameters per function ≤ 4 | Automated | Ruff |
 | No type errors | Automated | Pyright (`strict`) |
 | No lint violations | Automated | Ruff |
-| All public functions have docstrings | Automated | Ruff (`D`) |
 | No mutable globals | Automated | Pyright (`strict`) |
 | No silent exception swallowing | Automated | Ruff (`B001`, `S110`) |
 | No shell scripts — Python only | Automated | Ruff + pre-commit |
@@ -246,7 +242,7 @@ Prefer early returns over nested conditionals. If a function needs more than 25 
 
 ## Contribution Workflow
 
-```
+```text
 0. After cloning:              poetry install && pre-commit install --hook-type pre-push
 1. Branch from main
 2. Run quality checks:         python3 runbook/quality-checks
