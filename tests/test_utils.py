@@ -1,7 +1,6 @@
 import os
 import tempfile
 
-import pytest
 import yaml
 
 from src.models.manifest import ServiceManifest, VolumeSpec
@@ -77,9 +76,7 @@ def test_validate_manifest_all_unique() -> None:
 
 def _write_compose(services: dict[str, object]) -> str:
     """Write a temporary docker-compose file and return its path."""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yml", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
         yaml.dump({"services": services}, f)
         return f.name
 

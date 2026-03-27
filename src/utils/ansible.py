@@ -53,13 +53,19 @@ def load_manifests(dir_path: str) -> list[ServiceManifest]:
     for path in Path(dir_path).glob("*.yml"):
         with path.open() as f:
             data = yaml.safe_load(f)
-        if isinstance(data, list):
-            items = cast(list[object], data)
-            manifests.extend(
-                ServiceManifest.model_validate(item)
-                for item in items
-                if is_str_dict(item)
-            )
-        elif is_str_dict(data):
-            manifests.append(ServiceManifest.model_validate(data))
+
+        items = cast(list[object], data)
+        manifests.extend(
+            ServiceManifest.model_validate(item) for item in items if is_str_dict(item)
+        )
+
+        # if isinstance(data, list):
+        #     items = cast(list[object], data)
+        #     manifests.extend(
+        #         ServiceManifest.model_validate(item)
+        #         for item in items
+        #         if is_str_dict(item)
+        #     )
+        # elif is_str_dict(data):
+        #     manifests.append(ServiceManifest.model_validate(data))
     return manifests

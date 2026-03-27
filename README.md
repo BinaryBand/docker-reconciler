@@ -15,6 +15,7 @@ This project uses [Poetry](https://python-poetry.org/) for dependency management
 ```bash
 poetry install
 pre-commit install --hook-type pre-push
+ansible-galaxy collection install -r ansible/requirements.yml
 ```
 
 ### Dependencies
@@ -29,6 +30,8 @@ Requires:
 - [Ansible](https://www.ansible.com/) (including `ansible-lint`)
 
 You can install the required tools using your system's package manager (e.g., Homebrew, apt).
+
+`ansible-galaxy collection install` is needed once after cloning. It installs `ansible.posix` (ACL support) into the Poetry venv.
 
 ---
 
@@ -143,4 +146,4 @@ python -m src.main
 | T5 | Health checks pass — desired state reached |
 | F1–F5 | Failure at the corresponding T-state — reconciler halts |
 
-The observer is currently a simulation that steps through T0→T5 on each call. `load_manifests()` and `issue_command()` are stubs pending real implementation.
+The observer checks real filesystem state (volume existence, UID, mode) and queries `docker compose ps` for container health. Commands at T1/T2 run `ansible-playbook`; T3 runs `docker compose up -d`.
