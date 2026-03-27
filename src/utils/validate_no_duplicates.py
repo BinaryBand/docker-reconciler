@@ -3,9 +3,10 @@
 import sys
 import tomllib
 from pathlib import Path
-from typing import Any, cast
 
 import yaml
+
+from src.utils.types import is_str_dict
 
 CONFIG_DIR = Path("config")
 GROUP_VARS = Path("ansible/group_vars/all.yml")
@@ -16,18 +17,17 @@ def load_toml_keys() -> set[str]:
     keys: set[str] = set()
     for path in CONFIG_DIR.glob("*.toml"):
         with path.open("rb") as f:
-            data: Any = tomllib.load(f)
-            if isinstance(data, dict):
-                keys.update(cast(dict[str, Any], data).keys())
+            data = tomllib.load(f)
+            keys.update(data.keys())
     return keys
 
 
 def load_yaml_keys() -> set[str]:
     """Loads all keys from the main YAML group_vars file."""
     with GROUP_VARS.open() as f:
-        data: Any = yaml.safe_load(f) or {}
-    if isinstance(data, dict):
-        return set(cast(dict[str, Any], data).keys())
+        raw = yaml.safe_load(f)
+    if is_str_dict(raw):
+        return set(raw.keys())
     return set()
 
 

@@ -1,25 +1,50 @@
 """Utility functions for Ansible interactions."""
 
+import subprocess
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 import yaml
+from pydantic import BaseModel, ConfigDict, Field
 
-from src.models.ansible import AnsibleInventory
+from src.models.ansible import AnsibleHost, AnsibleInventory
 from src.models.manifest import ServiceManifest
+from src.utils.types import is_str_dict
+
+
+class _HostVars(BaseModel):
+    ansible_host: str | None = None
+    ansible_user: str | None = None
+    model_config = ConfigDict(extra="allow")
+
+
+class _Meta(BaseModel):
+    hostvars: dict[str, _HostVars] = {}
+    model_config = ConfigDict(extra="allow")
+
+
+class _InventoryJSON(BaseModel):
+    meta: _Meta = Field(default_factory=_Meta, alias="_meta")
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
 
 
 def load_inventory(path: str) -> AnsibleInventory:
-    """Loads an Ansible inventory from a file."""
-    return AnsibleInventory(hosts={})
-
-
-def _items_from_yaml(data: Any) -> list[dict[str, Any]]:
-    if isinstance(data, list):
-        return [item for item in cast(list[Any], data) if isinstance(item, dict)]
-    if isinstance(data, dict):
-        return [cast(dict[str, Any], data)]
-    return []
+    """Loads an Ansible inventory by running ansible-inventory --list."""
+    result = subprocess.run(
+        ["ansible-inventory", "--list", "-i", path],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    parsed = _InventoryJSON.model_validate_json(result.stdout)
+    hosts = {
+        name: AnsibleHost(
+            ansible_host=hv.ansible_host or name,
+            ansible_user=hv.ansible_user,
+        )
+        for name, hv in parsed.meta.hostvars.items()
+    }
+    return AnsibleInventory(hosts=hosts)
 
 
 def load_manifests(dir_path: str) -> list[ServiceManifest]:
@@ -27,6 +52,14 @@ def load_manifests(dir_path: str) -> list[ServiceManifest]:
     manifests: list[ServiceManifest] = []
     for path in Path(dir_path).glob("*.yml"):
         with path.open() as f:
-            for item in _items_from_yaml(yaml.safe_load(f)):
-                manifests.append(ServiceManifest(**item))
+            data = yaml.safe_load(f)
+        if isinstance(data, list):
+            items = cast(list[object], data)
+            manifests.extend(
+                ServiceManifest.model_validate(item)
+                for item in items
+                if is_str_dict(item)
+            )
+        elif is_str_dict(data):
+            manifests.append(ServiceManifest.model_validate(data))
     return manifests

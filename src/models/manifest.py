@@ -1,8 +1,6 @@
 """Manifest models for the docker-reconciler application."""
 
-from typing import Any
-
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ValidationInfo, field_validator
 
 
 class VolumeSpec(BaseModel):
@@ -32,7 +30,7 @@ class ServiceManifest(BaseModel):
 
     @field_validator("read_access")
     @classmethod
-    def no_self_reference(cls, v: list[str], info: Any) -> list[str]:
+    def no_self_reference(cls, v: list[str], info: ValidationInfo) -> list[str]:
         """Validates that a service does not grant read access to itself."""
         # Access the 'service' field from the validation context
         user = info.data.get("user")

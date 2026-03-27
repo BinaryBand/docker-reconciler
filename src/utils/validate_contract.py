@@ -2,39 +2,39 @@
 
 import sys
 from pathlib import Path
-from typing import Any, cast
 
 import yaml
 
-from src.models.contract import ContractViolation, ValidationResult
+from src.models.contract import (
+    ComposeFile,
+    ComposeService,
+    ContractViolation,
+    ValidationResult,
+)
 from src.models.manifest import ServiceManifest
 
 
-def _load_compose(compose_path: str) -> dict[str, Any]:
+def _load_compose(compose_path: str) -> dict[str, ComposeService]:
     """Loads a docker-compose.yml file."""
     with Path(compose_path).open() as f:
-        data: Any = yaml.safe_load(f)
-        return cast(dict[str, Any], data.get("services", {}))
+        return ComposeFile.model_validate(yaml.safe_load(f)).services
 
 
 def _check_uid(
-    svc: ServiceManifest, c: dict[str, Any], violations: list[ContractViolation]
+    svc: ServiceManifest, c: ComposeService, violations: list[ContractViolation]
 ) -> None:
-    if "user" in c and str(c["user"]).split(":")[0] != str(svc.uid):
+    if c.user is not None and c.user.split(":")[0] != str(svc.uid):
         violations.append(
             ContractViolation(
                 service=svc.service,
                 field="uid",
-                message=f"UID mismatch: expected {svc.uid}, got {c['user']}",
+                message=f"UID mismatch: expected {svc.uid}, got {c.user}",
             )
         )
 
 
-def _get_declared_mounts(c: dict[str, Any]) -> list[str]:
-    volumes: Any = c.get("volumes", [])
-    if not isinstance(volumes, list):
-        return []
-    return [v.split(":")[0] for v in cast(list[Any], volumes) if isinstance(v, str)]
+def _get_declared_mounts(c: ComposeService) -> list[str]:
+    return [v.split(":")[0] for v in c.volumes]
 
 
 def _check_volumes(
@@ -70,7 +70,7 @@ def validate_contract(
                 )
             )
             continue
-        c = cast(dict[str, Any], compose[svc.service])
+        c = compose[svc.service]
         _check_uid(svc, c, violations)
         _check_volumes(svc, _get_declared_mounts(c), violations)
 

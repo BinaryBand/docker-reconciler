@@ -1,23 +1,15 @@
 """Utility functions for logging configuration."""
 
-import json
 import logging
 import sys
 
 
 def setup_logging(level: str) -> None:
-    """Sets up logging for the application."""
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        stream=sys.stdout,
-    )
-    # Simple structured logging example
+    """Sets up structured JSON logging for the application."""
     handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter(
-        json.dumps(
-            {"time": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}
-        )
-    )
-    handler.setFormatter(formatter)
-    logging.getLogger().addHandler(handler)
+    fmt = '{"time": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}'
+    handler.setFormatter(logging.Formatter(fmt))
+    root = logging.getLogger()
+    root.setLevel(level)
+    root.handlers.clear()
+    root.addHandler(handler)
