@@ -4,3 +4,4 @@ compose_file: docker-compose.yml
 puid: 1000
 pgid: 1000
 media_gid: 3000
+ansible_python_interpreter: "{{ ansible_playbook_python }}"

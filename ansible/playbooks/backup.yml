@@ -1,0 +1,20 @@
+---
+- name: Run backup
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Initialize restic repository (ignore if exists)
+      ansible.builtin.command: docker compose --profile on-demand run --rm restic init
+      args:
+        chdir: "{{ playbook_dir }}/../../"
+      register: init_result
+      failed_when:
+        - init_result.rc != 0
+        - "'config file already exists' not in init_result.stderr and 'config file already exists' not in init_result.stdout"
+      changed_when: init_result.rc == 0
+
+    - name: Run restic backup
+      ansible.builtin.command: docker compose --profile on-demand run --rm restic backup /backups
+      args:
+        chdir: "{{ playbook_dir }}/../../"

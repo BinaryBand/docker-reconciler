@@ -1,0 +1,32 @@
+---
+- name: Run restore
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Initialize restic repository (ignore if exists)
+      ansible.builtin.command: docker compose --profile on-demand run --rm restic init
+      args:
+        chdir: "{{ playbook_dir }}/../../"
+      register: init_result
+      failed_when:
+        - init_result.rc != 0
+        - "'config file already exists' not in init_result.stderr and 'config file already exists' not in init_result.stdout"
+      changed_when: init_result.rc == 0
+
+    - name: Run restic restore
+      ansible.builtin.command: docker compose --profile on-demand run --rm restic restore latest --target /
+      args:
+        chdir: "{{ playbook_dir }}/../../"
+      register: restore_result
+      failed_when:
+        - restore_result.rc != 0
+        - "'no snapshot found' not in restore_result.stderr"
+      changed_when: restore_result.rc == 0
+
+    - name: Report restore status
+      ansible.builtin.debug:
+        msg: "No backups found to restore from. Please run a backup first."
+      when:
+        - restore_result.rc != 0
+        - "'no snapshot found' in restore_result.stderr"
