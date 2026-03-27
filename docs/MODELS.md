@@ -50,11 +50,11 @@ class ServiceManifest(BaseModel):
 Owned by `models/state.py`. Used by `reconciler/` to represent and advance system state.
 
 ```python
-from enum import Enum
+from enum import StrEnum
 from pydantic import BaseModel
 
 
-class StateLabel(str, Enum):
+class StateLabel(StrEnum):
     T0 = "T0"   # clean slate — manifest validation gate
     T1 = "T1"   # volumes provisioned
     T2 = "T2"   # permissions and ACLs applied
@@ -75,6 +75,17 @@ class SystemState(BaseModel):
     compose: bool = False
     post_start: bool = False
     health: bool = False
+
+    @classmethod
+    def from_label(cls, label: StateLabel) -> "SystemState":
+        return cls(
+            label=label,
+            volumes=label in [StateLabel.T1, StateLabel.T2, StateLabel.T3, StateLabel.T4, StateLabel.T5],
+            permissions=label in [StateLabel.T2, StateLabel.T3, StateLabel.T4, StateLabel.T5],
+            compose=label in [StateLabel.T3, StateLabel.T4, StateLabel.T5],
+            post_start=label in [StateLabel.T4, StateLabel.T5],
+            health=label == StateLabel.T5,
+        )
 
 
 class TransitionMap(BaseModel):
@@ -122,7 +133,7 @@ class ContractViolation(BaseModel):
 
 class ValidationResult(BaseModel):
     valid: bool
-    errors: list[ContractViolation] = []
+    errors: list[ContractViolation]
 
 
 class ComposeDef(BaseModel):
@@ -166,8 +177,8 @@ from models.state import StateLabel, TransitionMap
 class ReconcilerConfig(BaseModel):
     desired_state: StateLabel
     transition_map: TransitionMap
-    max_retries: int = 3
-    dry_run: bool = False
+    max_retries: int
+    dry_run: bool
 ```
 
 * * *

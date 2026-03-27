@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
 import subprocess
 import sys
 
 
 def run_command(command: list[str]) -> None:
+    """Run a shell command and exit if it fails."""
     print(f"Running: {' '.join(command)}")
     result = subprocess.run(command, capture_output=False)
     if result.returncode != 0:
@@ -11,12 +11,13 @@ def run_command(command: list[str]) -> None:
         sys.exit(result.returncode)
 
 
-def main():
+def main() -> None:
+    """Run all quality checks."""
     commands = [
         ["pyright", "src/"],
         ["ruff", "check", "src/"],
         ["ruff", "format", "src/", "--check"],
-        ["lizard", "src/", "-C", "10", "-L", "60", "-a", "4"],
+        ["lizard", "src/", "-C", "5", "-L", "25", "-a", "4"],
         ["lint-imports"],
     ]
 

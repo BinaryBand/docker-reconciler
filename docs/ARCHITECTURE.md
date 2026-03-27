@@ -110,15 +110,15 @@ services:
 
 ### Module Responsibilities
 
-**`main.py`** — T0 gate and reconciler entry point. Calls `load_manifests()` and `validate_manifests()` — halts on any violation before issuing a single command. Calls `load_inventory()` and `load_config()` — deserialises into typed models. Instantiates `ReconcilerConfig` and starts the reconciliation loop. No business logic; no raw data types.
+**`main.py`** — T0 gate and reconciler entry point. Calls `load_manifests()` and `validate_manifest()` — halts on any violation before issuing a single command. Calls `load_inventory()` and `load_config()` — deserialises into typed models. Sets up logging via `setup_logging()`. Instantiates `ReconcilerConfig` and starts the reconciliation loop. No business logic; no raw data types.
 
 **`models/`** — pure Pydantic shapes. No I/O, no imports from anywhere else in `src/`. Every model is the authoritative shape for data crossing a concern boundary. See `MODELS.md` for full definitions.
 
-**`reconciler/controller.py`** — `reconcile(desired, actual) -> next command`. Compares desired and actual `SystemState`; consults `transitions.py` for the next legal move; returns a typed command. Never reads files or calls subprocesses.
+**`reconciler/controller.py`** — `reconcile(desired, config, manifests)`. Compares desired and actual `SystemState`; consults `config.transition_map` for the next legal move; returns a typed command. Never reads files or calls subprocesses.
 
 **`reconciler/observer.py`** — `observe() -> SystemState`. Queries current system state and coerces to a typed model. The only reconciler module that touches external state.
 
-**`reconciler/transitions.py`** — transition map and legal move resolution. Consults `TransitionMap` to determine valid next states. Pure logic — no I/O.
+**`reconciler/transitions.py`** — transition map and legal move resolution. Pure logic — no I/O.
 
 **`reconciler/model.py`** — `ReconcilerConfig`. Typed configuration for the reconciler — desired state, idempotency keys, retry policy.
 
@@ -126,9 +126,11 @@ services:
 
 **`utils/config.py`** — `load_config(env: str) -> AppConfig`. Reads `config/{env}.toml`; returns a typed Pydantic model. Flags, timeouts, URLs only.
 
-**`utils/validate_manifest.py`** — `validate_manifests(manifests: list[ServiceManifest]) -> list[ValidationResult]`. Checks business rules: no duplicate paths, no self-referencing `read_access`, valid mode strings. Pydantic handles type and shape; this handles logic.
+**`utils/validate_manifest.py`** — `validate_manifest(manifests: list[ServiceManifest]) -> ValidationResult`. Checks business rules: duplicate UIDs and duplicate volume paths. Self-referencing `read_access` and valid mode strings are checked by Pydantic model validators.
 
-**`utils/validate_contract.py`** — `validate_contract(manifests: list[ServiceManifest], compose: ComposeDef) -> list[ContractViolation]`. Asserts UIDs and volume paths in Compose match manifests.
+**`utils/validate_contract.py`** — `validate_contract(manifests: list[ServiceManifest], compose: str) -> ValidationResult`. Asserts UIDs and volume paths in Compose match manifests.
+
+**`utils/validate_no_duplicates.py`** — Checks for overlap between TOML config and Ansible group vars.
 
 **`utils/log.py`** — structured logging setup. Shared across all modules.
 
@@ -164,26 +166,22 @@ project/
 │   ├── roles/
 │   │   ├── storage/                 # volumes, users, ACLs — reads from manifests/
 │   │   └── validate/                # asserts Compose matches manifests
-│   ├── templates/
-│   │   └── *.j2                     # optional — container configs only
 │   ├── inventory/
 │   │   └── hosts
 │   ├── group_vars/
 │   │   └── all.yml                  # infrastructure-level vars — UIDs, global policy
-│   ├── vault/
-│   │   └── *.yml                    # encrypted secrets
 │   └── molecule.yml
 ├── config/
 │   ├── dev.toml
-│   ├── prod.toml
-│   └── README.md
 ├── runbook/
+│   ├── quality-checks               # automates quality gates
 ├── src/
 │   ├── main.py
 │   ├── models/
 │   │   ├── manifest.py              # ServiceManifest, VolumeSpec
 │   │   ├── state.py                 # SystemState, StateLabel, TransitionMap
-│   │   └── contract.py              # ValidationResult, ContractViolation
+│   │   ├── contract.py              # ValidationResult, ContractViolation
+│   │   └── service.py               # ClusterState, ContainerState
 │   ├── reconciler/
 │   │   ├── controller.py
 │   │   ├── observer.py
@@ -192,9 +190,10 @@ project/
 │   └── utils/
 │       ├── ansible.py
 │       ├── config.py
+│       ├── log.py
 │       ├── validate_manifest.py
 │       ├── validate_contract.py
-│       └── log.py
+│       └── validate_no_duplicates.py
 ├── tests/
 ├── docker-compose.yml
 ├── .pre-commit-config.yaml
@@ -207,7 +206,7 @@ project/
 
 - [ ] **Unidirectional Data Flow** — all contracts route through Orchestration; no concern communicates with another directly; a return path is a boundary violation
 - [ ] **Single Ownership** — each concern has exactly one owner; shared ownership is a hidden bidirectional flow
-- [ ] **Bounded Contexts** — Ansible: state & secrets; Python: orchestration; Compose: service topology; TOML: Python-consumed config; Jinja2: optional container configs
+- [ ] **Bounded Contexts** — Ansible: state & secrets; Python: orchestration; Compose: service topology; TOML: Python-consumed config
 - [ ] **Manifest Authority** — each service's storage footprint declared once in `ansible/manifests/<service>.yml`; Ansible provisions from it, Compose consumes from it, Python validates against it
 - [ ] **T0 Gate** — all manifests pass Pydantic validation before any command is issued; malformed manifests halt the orchestrator immediately
 - [ ] **Pydantic Boundary** — every value crossing a module boundary is a Pydantic model or typed primitive; `dict`, `Any`, and untyped structures are banned

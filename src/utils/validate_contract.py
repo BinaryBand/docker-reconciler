@@ -1,3 +1,5 @@
+"""Utility functions for validating service contracts."""
+
 import sys
 from pathlib import Path
 from typing import Any, cast
@@ -9,6 +11,7 @@ from src.models.manifest import ServiceManifest
 
 
 def _load_compose(compose_path: str) -> dict[str, Any]:
+    """Loads a docker-compose.yml file."""
     with Path(compose_path).open() as f:
         data: Any = yaml.safe_load(f)
         return cast(dict[str, Any], data.get("services", {}))
@@ -17,6 +20,7 @@ def _load_compose(compose_path: str) -> dict[str, Any]:
 def validate_contract(
     manifests: list[ServiceManifest], compose_path: str
 ) -> ValidationResult:
+    """Validates the service contract against the docker-compose.yml."""
     violations: list[ContractViolation] = []
     compose = _load_compose(compose_path)
 
@@ -33,7 +37,7 @@ def validate_contract(
 
         c = cast(dict[str, Any], compose[svc.service])
 
-        if "user" in c and str(c["user"]) != str(svc.uid):
+        if "user" in c and str(c["user"]).split(":")[0] != str(svc.uid):
             violations.append(
                 ContractViolation(
                     service=svc.service,

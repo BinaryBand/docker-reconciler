@@ -1,3 +1,5 @@
+"""Main entry point for the docker-reconciler application."""
+
 from src.models.state import StateLabel
 from src.reconciler.controller import reconcile
 from src.reconciler.model import ReconcilerConfig
@@ -6,6 +8,7 @@ from src.utils.config import load_config
 
 
 def main() -> None:
+    """Execute the main reconciliation loop."""
     # 1. Load config
     config = load_config("dev")
 
@@ -26,9 +29,22 @@ def main() -> None:
         print(f"Contract validation failed: {contract.errors}")
         exit(1)
 
+    # 1a. Setup logging
+    from src.utils.log import setup_logging
+
+    setup_logging(config.log_level)
+
+    # 1b. Load inventory
+    from src.utils.ansible import load_inventory
+
+    load_inventory("ansible/inventory/hosts")
+
     # 4. Build ReconcilerConfig
+    from src.models.state import TransitionMap
+
     recon_config = ReconcilerConfig(
         desired_state=StateLabel.T5,
+        transition_map=TransitionMap(),
         max_retries=config.reconciler_max_retries,
         dry_run=False,
     )

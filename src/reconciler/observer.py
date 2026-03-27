@@ -1,3 +1,5 @@
+"""Observer pattern implementation for monitoring system state."""
+
 from dataclasses import dataclass, field
 
 from src.models.manifest import ServiceManifest

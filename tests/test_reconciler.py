@@ -10,7 +10,10 @@ from src.reconciler.transitions import build_transition_map
 
 def _config(retries: int = 10) -> ReconcilerConfig:
     return ReconcilerConfig(
-        desired_state=StateLabel.T5, max_retries=retries, dry_run=False
+        desired_state=StateLabel.T5,
+        transition_map=build_transition_map(),
+        max_retries=retries,
+        dry_run=False,
     )
 
 
@@ -72,7 +75,12 @@ def test_reconcile_exhausts_retries() -> None:
 
 def test_reconcile_no_transition_path() -> None:
     """T5 observed, desired=T3: T5 can only go to T0, not toward T3 → RuntimeError."""
-    cfg = ReconcilerConfig(desired_state=StateLabel.T3, max_retries=5, dry_run=False)
+    cfg = ReconcilerConfig(
+        desired_state=StateLabel.T3,
+        transition_map=build_transition_map(),
+        max_retries=5,
+        dry_run=False,
+    )
     obs = _observer_returning(StateLabel.T5)
     with (
         patch("src.reconciler.controller.Observer", return_value=obs),
@@ -83,6 +91,9 @@ def test_reconcile_no_transition_path() -> None:
 
 def test_reconcile_loop_terminates() -> None:
     config = ReconcilerConfig(
-        desired_state=StateLabel.T5, max_retries=10, dry_run=False
+        desired_state=StateLabel.T5,
+        transition_map=build_transition_map(),
+        max_retries=10,
+        dry_run=False,
     )
     reconcile(StateLabel.T5, config, [])  # real Observer simulates T0→T5

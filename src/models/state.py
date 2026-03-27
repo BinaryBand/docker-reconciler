@@ -1,9 +1,13 @@
+"""Models representing system states and transitions."""
+
 from enum import StrEnum
 
 from pydantic import BaseModel
 
 
 class StateLabel(StrEnum):
+    """Enumeration of system state labels."""
+
     T0 = "T0"
     T1 = "T1"
     T2 = "T2"
@@ -18,6 +22,8 @@ class StateLabel(StrEnum):
 
 
 class SystemState(BaseModel):
+    """Represents a snapshot of the system state."""
+
     label: StateLabel
     volumes: bool = False
     permissions: bool = False
@@ -27,6 +33,7 @@ class SystemState(BaseModel):
 
     @classmethod
     def from_label(cls, label: StateLabel) -> "SystemState":
+        """Creates a SystemState instance from a StateLabel."""
         return cls(
             label=label,
             volumes=label
@@ -46,6 +53,8 @@ class SystemState(BaseModel):
 
 
 class TransitionMap(BaseModel):
+    """Defines valid state transitions."""
+
     transitions: dict[StateLabel, list[StateLabel]] = {
         StateLabel.T0: [StateLabel.T1],
         StateLabel.T1: [StateLabel.T2, StateLabel.F1, StateLabel.T0],
@@ -63,6 +72,7 @@ class TransitionMap(BaseModel):
     def next_toward(
         self, current: StateLabel, desired: StateLabel
     ) -> StateLabel | None:
+        """Determines the next state in a path toward the desired state."""
         legal = self.transitions.get(current, [])
         if desired in legal:
             return desired

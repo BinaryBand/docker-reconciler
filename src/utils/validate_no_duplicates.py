@@ -1,3 +1,5 @@
+"""Utility functions for validating configuration key uniqueness."""
+
 import sys
 import tomllib
 from pathlib import Path
@@ -10,6 +12,7 @@ GROUP_VARS = Path("ansible/group_vars/all.yml")
 
 
 def load_toml_keys() -> set[str]:
+    """Loads all keys from TOML files in the config directory."""
     keys: set[str] = set()
     for path in CONFIG_DIR.glob("*.toml"):
         with path.open("rb") as f:
@@ -20,6 +23,7 @@ def load_toml_keys() -> set[str]:
 
 
 def load_yaml_keys() -> set[str]:
+    """Loads all keys from the main YAML group_vars file."""
     with GROUP_VARS.open() as f:
         data: Any = yaml.safe_load(f) or {}
     if isinstance(data, dict):
@@ -28,6 +32,7 @@ def load_yaml_keys() -> set[str]:
 
 
 def validate() -> list[str]:
+    """Validates that there are no overlapping keys in config files."""
     overlap = load_toml_keys() & load_yaml_keys()
     return [
         f"ERROR: key '{k}' declared in both config/*.toml and group_vars/all.yml"

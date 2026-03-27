@@ -1,3 +1,5 @@
+"""Utility functions for application configuration."""
+
 import tomllib
 from pathlib import Path
 
